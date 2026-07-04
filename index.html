@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ずぼら家計簿＆お家キーパー</title>
+    
+    <!-- iPhone用PWA（単独アプリ化）設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ずぼら家計簿">
+    
+    <style>
+        /* 全体スタイリング（目に優しい、少し大人っぽいチェリー＆ダーク系の配色） */
+        :root {
+            --primary-color: #b83b5e; /* チェリーレッドのアクセント */
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 70px; /* ナビゲーションバーの余白 */
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 20px 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 1px solid #3d3d3d;
+        }
+
+        .container {
+            padding: 15px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            border-left: 4px solid var(--primary-color);
+            padding-left: 8px;
+        }
+
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+
+        .upload-zone {
+            border: 2px dashed #555;
+            border-radius: 12px;
+            padding: 30px 15px;
+            text-align: center;
+            cursor: pointer;
+            background-color: rgba(255,255,255,0.02);
+            transition: background 0.2s;
+        }
+        .upload-zone:active {
+            background-color: rgba(255,255,255,0.08);
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background-color: #3d3d3d;
+            color: #fff;
+            font-size: 1rem;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+        }
+
+        button.btn-main {
+            background-color: var(--primary-color);
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button.btn-main:active {
+            opacity: 0.8;
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background-color: var(--card-bg);
+            display: table;
+            table-layout: fixed;
+            border-top: 1px solid #3d3d3d;
+            z-index: 1000;
+        }
+        .nav-item {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+        .nav-item.active {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .nav-icon {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .flex-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .flex-item {
+            display: table;
+            width: 100%;
+            padding: 12px 0;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        .flex-cell {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .text-right {
+            text-align: right;
+            width: 100px;
+        }
+        .btn-small {
+            width: auto;
+            padding: 6px 10px;
+            margin: 2px;
+            font-size: 0.8rem;
+            background-color: #555;
+            border: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <header>ずぼら家計簿＆お家キーパー</header>
+
+    <div class="container">
+        
+        <!-- 1. 入力画面 -->
+        <div id="page-input" class="page active">
+            <div class="card">
+                <h2>📸 レシート自動解析（最強の武器）</h2>
+                <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
+                    <span style="font-size: 2.5rem;">📁</span>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;">タップしてレシート画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが自動で読み取ります）</span></p>
+                </div>
+                <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="simulateAIRead(this);">
+            </div>
+
+            <div class="card">
+                <h2>✍️ 手入力 / 修正フォーム</h2>
+                <input type="date" id="input-date">
+                <input type="number" id="input-amount" placeholder="金額（円）" inputmode="numeric">
+                <select id="input-category">
+                    <option value="食費">食費</option>
+                    <option value="日用品">日用品</option>
+                    <option value="趣味・娯楽">趣味・娯楽</option>
+                    <option value="その他">その他</option>
+                </select>
+                <input type="text" id="input-memo" placeholder="品名・メモ（例：豚肉、洗剤）">
+                
+                <label style="display:block; margin: 10px 0; font-size: 0.9rem;">
+                    <input type="checkbox" id="sync-stock" style="width:auto; margin-right:8px;">同時に在庫として登録する
+                </label>
+                
+                <button class="btn-main" onclick="addData();">この内容で登録</button>
+            </div>
+        </div>
+
+        <!-- 2. 家計簿・履歴画面 -->
+        <div id="page-history" class="page">
+            <div class="card">
+                <h2>📊 今月の収支サマリー</h2>
+                <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0;" id="total-amount">0 円</div>
+            </div>
+            <div class="card">
+                <h2>📜 履歴一覧</h2>
+                <ul class="flex-list" id="history-list">
+                    <!-- 動的に追加されます -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- 3. 在庫管理画面 -->
+        <div id="page-stock" class="page">
+            <div class="card">
+                <h2>🥕 現在のストック一覧</h2>
+                <ul class="flex-list" id="stock-list">
+                    <!-- 動的に追加されます -->
+                </ul>
+                <button style="margin-top:15px; background-color:#444; border:none;" onclick="copyStockForMenu();">📋 献立相談用に出力をコピー</button>
+            </div>
+        </div>
+
+        <!-- 4. 分析ラボ画面 -->
+        <div id="page-analysis" class="page">
+            <div class="card">
+                <h2>🔮 消費頻度ランキング（魔改造）</h2>
+                <p style="font-size:0.85rem; color:var(--text-muted);">購入・消費スピードが早い食材の分析ログです。</p>
+                <ul class="flex-list" id="analysis-list">
+                    <li class="flex-item"><div class="flex-cell">1. 豚肉（平均3日で消費）</div><div class="flex-cell text-right" style="color:var(--primary-color);">高頻度</div></li>
+                    <li class="flex-item"><div class="flex-cell">2. 牛乳（平均4日で消費）</div><div class="flex-cell text-right" style="color:var(--primary-color);">高頻度</div></li>
+                    <li class="flex-item"><div class="flex-cell">3. キャベツ（平均7日で消費）</div><div class="flex-cell text-right" style="color:var(--text-muted);">通常</div></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 下部タブナビゲーション -->
+    <div class="nav-bar">
+        <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</a>
+        <a href="#" class="nav-item" onclick="switchPage('history', this);"><span class="nav-icon">📊</span>家計簿</a>
+        <a href="#" class="nav-item" onclick="switchPage('stock', this);"><span class="nav-icon">🥕</span>在庫</a>
+        <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">🔮</span>ラボ</a>
+    </div>
+
+    <script>
+        let KakeiboData = JSON.parse(localStorage.getItem('kakeibo_data')) || [];
+        let StockData = JSON.parse(localStorage.getItem('stock_data')) || [];
+
+        document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
+
+        function switchPage(pageId, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById('page-' + pageId).classList.add('active');
+            element.classList.add('active');
+
+            if(pageId === 'history') renderHistory();
+            if(pageId === 'stock') renderStock();
+        }
+
+        function simulateAIRead(input) {
+            if (input.files && input.files[0]) {
+                alert("AIがレシートを解析中...");
+                document.getElementById('input-amount').value = 1280;
+                document.getElementById('input-category').value = "食費";
+                document.getElementById('input-memo').value = "豚肉・キャベツ（レシート自動解析）";
+                document.getElementById('sync-stock').checked = true;
+            }
+        }
+
+        function addData() {
+            const date = document.getElementById('input-date').value;
+            const amount = parseInt(document.getElementById('input-amount').value) || 0;
+            const category = document.getElementById('input-category').value;
+            const memo = document.getElementById('input-memo').value || "未分類";
+            const syncStock = document.getElementById('sync-stock').checked;
+
+            if(amount === 0) return alert("金額を入力してください");
+
+            KakeiboData.push({ id: Date.now(), date, amount, category, memo });
+            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+
+            if(syncStock) {
+                StockData.push({ id: Date.now(), name: memo.split('（')[0], date });
+                localStorage.setItem('stock_data', JSON.stringify(StockData));
+            }
+
+            alert("登録が完了しました！");
+            
+            document.getElementById('input-amount').value = "";
+            document.getElementById('input-memo').value = "";
+            document.getElementById('sync-stock').checked = false;
+        }
+
+        // 履歴表示 ＆ 「その場で修正・削除」システム
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            let total = 0;
+
+            // 最新の登録が上に来るようにループ
+            [...KakeiboData].reverse().forEach(item => {
+                total += item.amount;
+                list.innerHTML += `
+                    <li class="flex-item">
+                        <div class="flex-cell">
+                            <span style="font-size:0.8rem; color:var(--text-muted);">${item.date}</span><br>
+                            <strong>${item.memo}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">[${item.category}]</span><br>
+                            <button class="btn-small" onclick="editData(${item.id})">✏️ 修正</button>
+                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteData(${item.id})">🗑️ 削除</button>
+                        </div>
+                        <div class="flex-cell text-right" style="font-weight:bold; color:var(--primary-color); font-size:1.1rem;">
+                            ￥${item.amount.toLocaleString()}
+                        </div>
+                    </li>
+                `;
+            });
+            document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
+        }
+
+        // その場修正ロジック
+        function editData(id) {
+            const item = KakeiboData.find(p => p.id === id);
+            if (!item) return;
+
+            // iPhoneの標準ポップアップ（Prompt）を使ってサクッと入力させる
+            const newMemo = prompt("品名・メモを修正:", item.memo);
+            if (newMemo === null) return; // キャンセルされたら何もしない
+
+            const newAmountStr = prompt("金額を修正（半角数字）:", item.amount);
+            if (newAmountStr === null) return;
+            const newAmount = parseInt(newAmountStr) || 0;
+
+            // データを上書きして保存
+            item.memo = newMemo;
+            item.amount = newAmount;
+            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+            
+            renderHistory(); // 画面を再描画
+            alert("修正しました！");
+        }
+
+        // 削除ロジック
+        function deleteData(id) {
+            if(confirm("この履歴を削除してもよろしいですか？")) {
+                KakeiboData = KakeiboData.filter(item => item.id !== id);
+                localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+                renderHistory();
+            }
+        }
+
+        function renderStock() {
+            const list = document.getElementById('stock-list');
+            list.innerHTML = "";
+
+            if(StockData.length === 0) {
+                list.innerHTML = `<p style="color:var(--text-muted); text-align:center;">在庫はありません</p>`;
+                return;
+            }
+
+            StockData.forEach(item => {
+                list.innerHTML += `
+                    <li class="flex-item" id="stock-${item.id}">
+                        <div class="flex-cell">
+                            <strong>${item.name}</strong><br>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span>
+                        </div>
+                        <div class="flex-cell text-right">
+                            <button class="btn-small" onclick="consumeStock(${item.id})">🍽️ 消費</button>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        function consumeStock(id) {
+            StockData = StockData.filter(item => item.id !== id);
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+            renderStock();
+        }
+
+        function copyStockForMenu() {
+            if(StockData.length === 0) return alert("在庫が空っぽです");
+            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + StockData.map(i => `- ${i.name}`).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けて献立を聞いてね。");
+            });
+        }
+    </script>
+</body>
+</html>
