@@ -92,6 +92,14 @@
             -webkit-appearance: none;
         }
 
+        /* 数量用の横並びレイアウト用 */
+        .row-flex {
+            display: flex;
+            gap: 8px;
+        }
+        .row-flex input { flex: 2; }
+        .row-flex select { flex: 1; }
+
         button.btn-main {
             background-color: var(--primary-color);
             border: none;
@@ -190,6 +198,17 @@
                 </select>
                 <input type="text" id="input-memo" placeholder="品名・メモ（例：豚肉、洗剤）">
                 
+                <div class="row-flex">
+                    <input type="number" id="input-qty" placeholder="数量（任意）" inputmode="numeric">
+                    <select id="input-unit">
+                        <option value="個">個</option>
+                        <option value="g">g</option>
+                        <option value="本">本</option>
+                        <option value="パック">ﾊﾟｯｸ</option>
+                        <option value="袋">袋</option>
+                    </select>
+                </div>
+                
                 <label style="display:block; margin: 10px 0; font-size: 0.9rem;">
                     <input type="checkbox" id="sync-stock" style="width:auto; margin-right:8px;">同時に在庫として登録する
                 </label>
@@ -214,7 +233,19 @@
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
                 <h2>🎁 在庫を直接追加（いただき物・現在のストック用）</h2>
                 <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
-                <button class="btn-main" style="background-color: #4e8d7c; padding: 10px;" onclick="addStockDirect();">お家キーパーに直接ストック</button>
+                
+                <div class="row-flex">
+                    <input type="number" id="direct-stock-qty" placeholder="数量" inputmode="numeric">
+                    <select id="direct-stock-unit">
+                        <option value="個">個</option>
+                        <option value="g">g</option>
+                        <option value="本">本</option>
+                        <option value="パック">パック</option>
+                        <option value="袋">袋</option>
+                    </select>
+                </div>
+
+                <button class="btn-main" style="background-color: #4e8d7c; padding: 10px; margin-top:10px;" onclick="addStockDirect();">お家キーパーに直接ストック</button>
             </div>
 
             <div class="card">
@@ -269,6 +300,8 @@
                 document.getElementById('input-amount').value = 1280;
                 document.getElementById('input-category').value = "食費";
                 document.getElementById('input-memo').value = "豚肉・キャベツ（レシート自動解析）";
+                document.getElementById('input-qty').value = 300;
+                document.getElementById('input-unit').value = "g";
                 document.getElementById('sync-stock').checked = true;
             }
         }
@@ -278,15 +311,27 @@
             const amount = parseInt(document.getElementById('input-amount').value) || 0;
             const category = document.getElementById('input-category').value;
             const memo = document.getElementById('input-memo').value || "未分類";
+            const qty = document.getElementById('input-qty').value;
+            const unit = document.getElementById('input-unit').value;
             const syncStock = document.getElementById('sync-stock').checked;
 
             if(amount === 0) return alert("金額を入力してください");
 
-            KakeiboData.push({ id: Date.now(), date, amount, category, memo });
+            // 数量がある場合はメモの後ろにくっつけて家計簿履歴に残す
+            const displayMemo = qty ? `${memo} (${qty}${unit})` : memo;
+
+            KakeiboData.push({ id: Date.now(), date, amount, category, memo: displayMemo });
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
             if(syncStock) {
-                StockData.push({ id: Date.now(), name: memo.split('（')[0], date, source: '購入' });
+                StockData.push({ 
+                    id: Date.now(), 
+                    name: memo.split('（')[0], 
+                    qty: qty || '',
+                    unit: qty ? unit : '',
+                    date, 
+                    source: '購入' 
+                });
                 localStorage.setItem('stock_data', JSON.stringify(StockData));
             }
 
@@ -294,20 +339,24 @@
             
             document.getElementById('input-amount').value = "";
             document.getElementById('input-memo').value = "";
+            document.getElementById('input-qty').value = "";
             document.getElementById('sync-stock').checked = false;
         }
 
-        // 🌟 新設：在庫の直接追加ロジック
         function addStockDirect() {
             const name = document.getElementById('direct-stock-name').value;
+            const qty = document.getElementById('direct-stock-qty').value;
+            const unit = document.getElementById('direct-stock-unit').value;
+            
             if(!name) return alert("品名を入力してください");
 
             const today = new Date().toISOString().substring(0, 10);
 
-            // 家計簿（支出）には入れず、在庫データにだけ追加
             StockData.push({ 
                 id: Date.now(), 
                 name: name, 
+                qty: qty || '',
+                unit: qty ? unit : '',
                 date: today,
                 source: '直接追加' 
             });
@@ -315,7 +364,8 @@
 
             alert("在庫に直接ストックしました！");
             document.getElementById('direct-stock-name').value = "";
-            renderStock(); // 在庫一覧を再描画
+            document.getElementById('direct-stock-qty').value = "";
+            renderStock();
         }
 
         function renderHistory() {
@@ -379,12 +429,14 @@
             }
 
             [...StockData].reverse().forEach(item => {
-                // いただいた物か、買った物か、分かりやすいバッジ表示
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
+                // 数量が入力されている場合は「(300g)」などの表示をくっつける
+                const qtyDisplay = item.qty ? ` <span style="color:var(--primary-color); font-weight:bold;">(${item.qty}${item.unit})</span>` : '';
+                
                 list.innerHTML += `
                     <li class="flex-item" id="stock-${item.id}">
                         <div class="flex-cell">
-                            <strong>${badge} ${item.name}</strong><br>
+                            <strong>${badge} ${item.name}</strong>${qtyDisplay}<br>
                             <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span>
                         </div>
                         <div class="flex-cell text-right">
@@ -403,9 +455,11 @@
 
         function copyStockForMenu() {
             if(StockData.length === 0) return alert("在庫が空っぽです");
-            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + StockData.map(i => `- ${i.name}`).join('\n');
+            // 献立をGeminiに聞くときも、数量付きで綺麗にコピーされるように調整
+            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
+                         StockData.map(i => `- ${i.name}${i.qty ? `(${i.qty}${i.unit})` : ''}`).join('\n');
             navigator.clipboard.writeText(text).then(() => {
-                alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けて献立を聞いてね。");
+                alert("冷蔵庫の在庫データ（数量付き）をコピーしました！そのままGeminiに貼り付けて献立を聞いてね。");
             });
         }
     </script>
