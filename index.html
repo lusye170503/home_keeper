@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ずぼら家計簿＆お家キーパー</title>
+    <title>ずぼらかけいぼ＆おうちキーパー</title>
     
-    <!-- iPhone用PWA（単独アプリ化）設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ずぼら家計簿">
@@ -169,7 +168,6 @@
 
     <div class="container">
         
-        <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
                 <h2>📸 レシート自動解析（最強の武器）</h2>
@@ -181,7 +179,7 @@
             </div>
 
             <div class="card">
-                <h2>✍️ 手入力 / 修正フォーム</h2>
+                <h2>✍️ 手入力 / 支出フォーム</h2>
                 <input type="date" id="input-date">
                 <input type="number" id="input-amount" placeholder="金額（円）" inputmode="numeric">
                 <select id="input-category">
@@ -200,7 +198,6 @@
             </div>
         </div>
 
-        <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
                 <h2>📊 今月の収支サマリー</h2>
@@ -209,23 +206,25 @@
             <div class="card">
                 <h2>📜 履歴一覧</h2>
                 <ul class="flex-list" id="history-list">
-                    <!-- 動的に追加されます -->
-                </ul>
+                    </ul>
             </div>
         </div>
 
-        <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
+            <div class="card" style="background-color: #242424; border: 1px solid #444;">
+                <h2>🎁 在庫を直接追加（いただき物・現在のストック用）</h2>
+                <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
+                <button class="btn-main" style="background-color: #4e8d7c; padding: 10px;" onclick="addStockDirect();">お家キーパーに直接ストック</button>
+            </div>
+
             <div class="card">
                 <h2>🥕 現在のストック一覧</h2>
                 <ul class="flex-list" id="stock-list">
-                    <!-- 動的に追加されます -->
-                </ul>
+                    </ul>
                 <button style="margin-top:15px; background-color:#444; border:none;" onclick="copyStockForMenu();">📋 献立相談用に出力をコピー</button>
             </div>
         </div>
 
-        <!-- 4. 分析ラボ画面 -->
         <div id="page-analysis" class="page">
             <div class="card">
                 <h2>🔮 消費頻度ランキング（魔改造）</h2>
@@ -240,7 +239,6 @@
 
     </div>
 
-    <!-- 下部タブナビゲーション -->
     <div class="nav-bar">
         <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</a>
         <a href="#" class="nav-item" onclick="switchPage('history', this);"><span class="nav-icon">📊</span>家計簿</a>
@@ -288,7 +286,7 @@
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
             if(syncStock) {
-                StockData.push({ id: Date.now(), name: memo.split('（')[0], date });
+                StockData.push({ id: Date.now(), name: memo.split('（')[0], date, source: '購入' });
                 localStorage.setItem('stock_data', JSON.stringify(StockData));
             }
 
@@ -299,13 +297,32 @@
             document.getElementById('sync-stock').checked = false;
         }
 
-        // 履歴表示 ＆ 「その場で修正・削除」システム
+        // 🌟 新設：在庫の直接追加ロジック
+        function addStockDirect() {
+            const name = document.getElementById('direct-stock-name').value;
+            if(!name) return alert("品名を入力してください");
+
+            const today = new Date().toISOString().substring(0, 10);
+
+            // 家計簿（支出）には入れず、在庫データにだけ追加
+            StockData.push({ 
+                id: Date.now(), 
+                name: name, 
+                date: today,
+                source: '直接追加' 
+            });
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+
+            alert("在庫に直接ストックしました！");
+            document.getElementById('direct-stock-name').value = "";
+            renderStock(); // 在庫一覧を再描画
+        }
+
         function renderHistory() {
             const list = document.getElementById('history-list');
             list.innerHTML = "";
             let total = 0;
 
-            // 最新の登録が上に来るようにループ
             [...KakeiboData].reverse().forEach(item => {
                 total += item.amount;
                 list.innerHTML += `
@@ -325,29 +342,25 @@
             document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
         }
 
-        // その場修正ロジック
         function editData(id) {
             const item = KakeiboData.find(p => p.id === id);
             if (!item) return;
 
-            // iPhoneの標準ポップアップ（Prompt）を使ってサクッと入力させる
             const newMemo = prompt("品名・メモを修正:", item.memo);
-            if (newMemo === null) return; // キャンセルされたら何もしない
+            if (newMemo === null) return;
 
             const newAmountStr = prompt("金額を修正（半角数字）:", item.amount);
             if (newAmountStr === null) return;
             const newAmount = parseInt(newAmountStr) || 0;
 
-            // データを上書きして保存
             item.memo = newMemo;
             item.amount = newAmount;
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
             
-            renderHistory(); // 画面を再描画
+            renderHistory();
             alert("修正しました！");
         }
 
-        // 削除ロジック
         function deleteData(id) {
             if(confirm("この履歴を削除してもよろしいですか？")) {
                 KakeiboData = KakeiboData.filter(item => item.id !== id);
@@ -365,11 +378,13 @@
                 return;
             }
 
-            StockData.forEach(item => {
+            [...StockData].reverse().forEach(item => {
+                // いただいた物か、買った物か、分かりやすいバッジ表示
+                const badge = item.source === '直接追加' ? '🎁' : '🛒';
                 list.innerHTML += `
                     <li class="flex-item" id="stock-${item.id}">
                         <div class="flex-cell">
-                            <strong>${item.name}</strong><br>
+                            <strong>${badge} ${item.name}</strong><br>
                             <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span>
                         </div>
                         <div class="flex-cell text-right">
