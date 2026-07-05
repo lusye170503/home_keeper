@@ -224,7 +224,7 @@
         <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
-                <h2>📸 れしーと自動解析（長いレシート・複数枚対応）</h2>
+                <h2>📸 レシート自動解析（長いレシート・複数枚対応）</h2>
                 <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
                     <span style="font-size: 2.5rem;">📁</span>
                     <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてレシートを撮影・選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（長い場合は上から順に何パシャしてもOK！）</span></p>
@@ -237,7 +237,7 @@
             </div>
 
             <div class="card">
-                <h2>✍️ 手入力 / ししゅつふぉーむ</h2>
+                <h2>✍️ 手入力 / 支出フォーム</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
                 
@@ -275,11 +275,11 @@
         <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
-                <h2>📊 今月の合計ししゅつ</h2>
+                <h2>📊 今月の合計支出</h2>
                 <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0;" id="total-amount">0 円</div>
             </div>
             <div class="card">
-                <h2>📜 りれき一覧</h2>
+                <h2>📜 履歴一覧</h2>
                 <ul class="flex-list" id="history-list"></ul>
             </div>
         </div>
@@ -287,7 +287,7 @@
         <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
-                <h2>🎁 ざいこを直接追加（もらい物・今のストック）</h2>
+                <h2>🎁 在庫を直接追加（もらい物・今のストック）</h2>
                 <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
                 
                 <div class="row-flex">
