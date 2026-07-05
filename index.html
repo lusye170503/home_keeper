@@ -79,7 +79,6 @@
             background-color: rgba(255,255,255,0.08);
         }
 
-        /* プレビュー画像用スタイル */
         .preview-container {
             display: flex;
             flex-wrap: wrap;
@@ -213,6 +212,17 @@
             font-weight: bold;
             margin: 0 2px;
         }
+
+        select.select-inline-unit {
+            width: auto !important;
+            display: inline-block !important;
+            padding: 4px 20px 4px 8px !important;
+            margin: 0 0 0 4px !important;
+            font-size: 0.85rem !important;
+            background-color: #444 !important;
+            border: 1px solid #555 !important;
+            height: auto !important;
+        }
     </style>
 </head>
 <body>
@@ -231,12 +241,12 @@
                 </div>
                 <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="handleFileSelect(this);">
                 
-                <!-- 選択された画像のプレビューとリセットボタン -->
                 <div id="preview-area" class="preview-container"></div>
                 <button id="btn-reset-images" style="display:none; background-color:#555; font-size:0.85rem; padding:6px; margin-top:8px; border:none;" onclick="resetSelectedImages();">🔄 写真を選び直す</button>
             </div>
 
             <div class="card">
+                <!-- 「ししゅつふぉーむ」を漢字とカタカナに修正 -->
                 <h2>✍️ 手入力 / 支出フォーム</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
@@ -249,18 +259,12 @@
                         <option value="もらい物">💝 もらい物</option>
                         <option value="その他">🌀 その他</option>
                     </select>
-                    <!-- 費目ドロップダウン -->
                     <select id="input-category"></select>
                 </div>
 
                 <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）" oninput="countItems();">
                 <div id="item-count-display" style="font-size: 0.9rem; color: #4e8d7c; margin: -4px 0 8px 4px; font-weight: bold;">合計: 0 アイテム</div>
                 
-                <div class="row-flex">
-                    <input type="number" id="input-unit-price" placeholder="単価（空欄でもOK）" inputmode="numeric" oninput="calculateTotal();">
-                    <input type="number" id="input-qty" placeholder="数量" inputmode="numeric" value="1" oninput="calculateTotal();">
-                </div>
-
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
                 <label style="display:flex; align-items:center; margin: 15px 0; font-size: 0.95rem; cursor: pointer;">
@@ -307,7 +311,7 @@
             </div>
 
             <div class="card">
-                <h2>🥦 現在のストック一覧（個数調整つき）</h2>
+                <h2>🥦 現在のストック一覧（個数・単位調整・修正つき）</h2>
                 <ul class="flex-list" id="stock-list"></ul>
                 <button style="margin-top:15px; background-color:#444; border:none;" onclick="copyStockForMenu();">📋 献立相談用に出力をコピー</button>
             </div>
@@ -317,7 +321,7 @@
         <div id="page-analysis" class="page">
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">あっきーさんのGemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">Gemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
                 <input type="password" id="settings-api-key" placeholder="AQ.Ab8... で始まるキーを貼り付け" onchange="saveApiKey();">
                 <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0; display:none;" id="key-status">✅ スマホに鍵を安全に記憶しました！</p>
             </div>
@@ -362,7 +366,6 @@
         let DefaultCategories = ["食費", "日用品", "趣味・娯楽", "その他"];
         let CustomCategories = JSON.parse(localStorage.getItem('custom_categories')) || DefaultCategories;
 
-        // 複数枚レシート管理用の配列
         let selectedImagesBase64 = [];
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -402,7 +405,6 @@
                 tagsEl.innerHTML = "";
                 CustomCategories.forEach(cat => {
                     const isDefault = DefaultCategories.includes(cat);
-                    // シングルクォーテーションのエスケープバグを修正
                     tagsEl.innerHTML += `
                         <span onclick="${isDefault ? '' : `deleteCategory('${cat.replace(/'/g, "\\'")}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
                             ${cat} ${isDefault ? '' : '×'}
@@ -462,15 +464,6 @@
             }
         }
 
-        function calculateTotal() {
-            const uprice = parseInt(document.getElementById('input-unit-price').value) || 0;
-            const qty = parseFloat(document.getElementById('input-qty').value) || 1;
-            if (uprice > 0) {
-                document.getElementById('input-amount').value = Math.round(uprice * qty);
-            }
-        }
-
-        // ファイルが選択・撮影された時の処理
         async function handleFileSelect(input) {
             if (!input.files || !input.files[0]) return;
             
@@ -483,7 +476,6 @@
 
             const file = input.files[0];
             
-            // 画像をBase64に変換して配列に追加
             const base64Data = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -495,13 +487,8 @@
                 data: base64Data
             });
 
-            // プレビュー表示の更新
             renderPreviews();
-            
-            // ファイル選択値をクリア（同じファイル名でも連続撮影できるように）
             input.value = "";
-
-            // 自動解析の呼び出し
             analyzeMultipleReceipts();
         }
 
@@ -531,7 +518,6 @@
             document.getElementById('upload-status').innerHTML = "キャンセルしました。タップして新しく撮影してください。";
         }
 
-        // 蓄積されたすべての画像をまとめてGeminiに投げて合算解析させる
         async function analyzeMultipleReceipts() {
             if (selectedImagesBase64.length === 0) return;
 
@@ -543,16 +529,15 @@
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`;
                 
-                const promptText = "提供されたすべてのレシート画像（1枚または長いレシートを分割した複数枚）から、すべての購入情報を1つに統合し、指定のJSON形式だけで返してください。解説は一切不要です。\n" +
+                const promptText = "提供されたすべてのレシート画像から、すべての購入情報を1つに統合し、指定のJSON形式だけで返してください。解説は一切不要です。\n" +
                                    "1. amount: すべてのレシートの最終的な「支払総額（税込）」を足し合わせた、最終的な合計金額（総額）を数字のみで計算してください。\n" +
                                    "2. shop: 店舗名。複数ある場合はメインの店舗名。無ければ空欄。\n" +
                                    "3. payment: 支払い方法（『現金』『クレジットカード』など）\n" +
                                    "4. memo: すべての画像に記載されている【すべての購入商品名・食材名】を、漏らさず省略せずにすべて「・」で繋いだ1つの文字列にしてください（例：卵・牛乳・豚コマ肉・キャベツ）。金額や値引きの文字は除外してください。\n" +
                                    "5. unit_price: 空欄(null)にしてください。\n" +
-                                   "6. qty: 購入した品目の総数、または 1 にしてください。\n\n" +
+                                   "6. qty: 1にしてください。\n\n" +
                                    "JSON形式:\n{\"amount\": 数字, \"shop\": \"文字列\", \"payment\": \"文字列\", \"memo\": \"文字列\", \"unit_price\": null, \"qty\": 1}";
 
-                // リクエストのパーツ構築（プロンプト＋全画像データ）
                 let parts = [{ text: promptText }];
                 selectedImagesBase64.forEach(img => {
                     parts.push({
@@ -572,270 +557,4 @@
                 const json = await response.json();
                 let replyText = json.candidates[0].content.parts[0].text;
                 
-                replyText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
-                const result = JSON.parse(replyText);
-
-                document.getElementById('input-amount').value = result.amount || 0;
-                document.getElementById('input-shop').value = result.shop || "";
-                document.getElementById('input-memo').value = result.memo || "";
-                document.getElementById('input-unit-price').value = "";
-                document.getElementById('input-qty').value = result.qty || 1;
-                
-                if(result.payment) {
-                    const paySelect = document.getElementById('input-payment');
-                    if(result.payment.includes('カード') || result.payment.includes('クレジット')) {
-                        paySelect.value = 'クレジットカード';
-                    } else if(result.payment.includes('券') || result.payment.includes('ギフト')) {
-                        paySelect.value = 'ギフトカード';
-                    } else {
-                        paySelect.value = '現金';
-                    }
-                }
-
-                const syncCheckbox = document.getElementById('sync-stock');
-                if (syncCheckbox) {
-                    syncCheckbox.checked = true;
-                }
-
-                statusEl.innerHTML = `<span style='color:#4e8d7c;'>✅ 計 ${selectedImagesBase64.length} 枚の合算解析が完了しました！追加撮影も可能です。</span>`;
-                countItems();
-
-            } catch (error) {
-                console.error(error);
-                statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラー。もう一度やり直すか手動で入力してください。</span>";
-            }
-        }
-
-        function addData() {
-            const date = document.getElementById('input-date').value;
-            const shop = document.getElementById('input-shop').value.trim() || "お店不明";
-            const amount = parseInt(document.getElementById('input-amount').value) || 0;
-            const unitPrice = parseInt(document.getElementById('input-unit-price').value) || 0;
-            const payment = document.getElementById('input-payment').value;
-            const category = document.getElementById('input-category').value;
-            const memo = document.getElementById('input-memo').value || "未分類";
-            const qty = parseFloat(document.getElementById('input-qty').value) || 1;
-            
-            const isChecked = document.getElementById('sync-stock').checked;
-
-            if(amount === 0) return alert("金額を入力してください");
-
-            KakeiboData.push({ 
-                id: Date.now(), 
-                date, 
-                shop, 
-                amount, 
-                unitPrice,
-                payment, 
-                category, 
-                memo,
-                qty
-            });
-            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-
-            if(isChecked) {
-                const items = memo.split(/[・、, \n]+/);
-                let addedCount = 0;
-
-                items.forEach((itemName, index) => {
-                    const trimmedName = itemName.trim();
-                    if(!trimmedName || trimmedName === "レシート購入品") return;
-                    
-                    StockData.push({ 
-                        id: Date.now() + index, 
-                        name: trimmedName, 
-                        qty: 1, 
-                        unit: '個', 
-                        date, 
-                        source: payment === 'もらい物' ? '直接追加' : '購入'
-                    });
-                    addedCount++;
-                });
-                
-                if (addedCount > 0) {
-                    localStorage.setItem('stock_data', JSON.stringify(StockData));
-                }
-            }
-
-            alert("登録が完了しました！");
-            
-            // 登録が終わったら画像データもリセット
-            selectedImagesBase64 = [];
-            renderPreviews();
-
-            document.getElementById('input-shop').value = "";
-            document.getElementById('input-unit-price').value = "";
-            document.getElementById('input-qty').value = "1";
-            document.getElementById('input-amount').value = "";
-            document.getElementById('input-memo').value = "";
-            document.getElementById('sync-stock').checked = false; 
-            document.getElementById('upload-status').innerHTML = "タップしてレシートを撮影・選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（長い場合は上から順に何パシャしてもOK！）</span>";
-            countItems();
-        }
-
-        function addStockDirect() {
-            const name = document.getElementById('direct-stock-name').value;
-            const qty = parseFloat(document.getElementById('direct-stock-qty').value) || 1;
-            const unit = document.getElementById('direct-stock-unit').value;
-            
-            if(!name) return alert("品名を入力してください");
-
-            const today = new Date().toISOString().substring(0, 10);
-
-            StockData.push({ 
-                id: Date.now(), 
-                name: name, 
-                qty: qty,
-                unit: unit,
-                date: today,
-                source: '直接追加' 
-            });
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-
-            alert("おうちキーパーにストックしました！");
-            document.getElementById('direct-stock-name').value = "";
-            document.getElementById('direct-stock-qty').value = "1";
-            renderStock();
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = "";
-            let total = 0;
-
-            [...KakeiboData].reverse().forEach(item => {
-                total += item.amount;
-                
-                let payEmoji = "💸";
-                if(item.payment === "クレジットカード") payEmoji = "💳";
-                if(item.payment === "ギフトカード") payEmoji = "🎁";
-                if(item.payment === "もらい物") payEmoji = "💝";
-
-                const unitPriceDisplay = item.unitPrice ? `<span style="color:#aaa; font-size:0.8rem;">(単価:￥${item.unitPrice} × ${item.qty})</span>` : `(${item.qty})`;
-
-                list.innerHTML += `
-                    <li class="flex-item">
-                        <div class="flex-cell">
-                            <span style="font-size:0.8rem; color:var(--text-muted);">${item.date}</span> 
-                            <span style="color:#4e8d7c; font-size:0.85rem; font-weight:bold;">🛒 ${item.shop}</span>
-                            <span style="background-color:#3d3d3d; padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#ccc; margin-left:5px;">${payEmoji} ${item.payment || '現金'}</span><br>
-                            <strong style="font-size:1.05rem;">${item.memo}</strong> ${unitPriceDisplay} <span style="font-size:0.8rem; color:var(--text-muted);">[${item.category}]</span><br>
-                            <button class="btn-small" onclick="editData(${item.id})">✏️ 修正</button>
-                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteData(${item.id})">🗑️ 削除</button>
-                        </div>
-                        <div class="flex-cell text-right" style="font-weight:bold; color:var(--primary-color); font-size:1.1rem;">
-                            ￥${item.amount.toLocaleString()}
-                        </div>
-                    </li>
-                `;
-            });
-            document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
-        }
-
-        function editData(id) {
-            const item = KakeiboData.find(p => p.id === id);
-            if (!item) return;
-
-            const newShop = prompt("お店の名前を修正:", item.shop || "");
-            if (newShop === null) return;
-
-            const newMemo = prompt("品名・メモを修正:", item.memo);
-            if (newMemo === null) return;
-
-            const newAmountStr = prompt("合計金額を修正（半角数字）:", item.amount);
-            if (newAmountStr === null) return;
-            const newAmount = parseInt(newAmountStr) || 0;
-
-            item.shop = newShop;
-            item.memo = newMemo;
-            item.amount = newAmount;
-            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-            
-            renderHistory();
-            alert("修正しました！");
-        }
-
-        function deleteData(id) {
-            if(confirm("この履歴を削除してもよろしいですか？")) {
-                KakeiboData = KakeiboData.filter(item => item.id !== id);
-                localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-                renderHistory();
-            }
-        }
-
-        function renderStock() {
-            const list = document.getElementById('stock-list');
-            list.innerHTML = "";
-
-            if(StockData.length === 0) {
-                list.innerHTML = `<p style="color:var(--text-muted); text-align:center;">在庫はありません</p>`;
-                return;
-            }
-
-            [...StockData].reverse().forEach(item => {
-                const badge = item.source === '直接追加' ? '🎁' : '🛒';
-                const currentUnit = item.unit || '個';
-                
-                let qtyControl = `
-                    <button class="btn-qty" onclick="changeQty(${item.id}, -1)">-</button>
-                    <span style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; min-width:30px; display:inline-block; text-align:center;">${item.qty}</span>
-                    <button class="btn-qty" onclick="changeQty(${item.id}, 1)">+</button>
-                    <span>${currentUnit}</span>
-                `;
-                
-                list.innerHTML += `
-                    <li class="flex-item" id="stock-${item.id}">
-                        <div class="flex-cell">
-                            <strong style="font-size:1.05rem;">${badge} ${item.name}</strong><br>
-                            <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span>
-                        </div>
-                        <div class="flex-cell text-right" style="width:160px;">
-                            <div style="margin-bottom:5px;">${qtyControl}</div>
-                            <button class="btn-small" style="background-color:#4e8d7c;" onclick="consumeStock(${item.id})">🍽️ 全部消費</button>
-                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteStock(${item.id})">🗑️ 削除</button>
-                        </div>
-                    </li>
-                `;
-            });
-        }
-
-        function changeQty(id, amount) {
-            const item = StockData.find(p => p.id === id);
-            if(!item) return;
-
-            item.qty = (parseFloat(item.qty) || 0) + amount;
-            
-            if(item.qty <= 0) {
-                StockData = StockData.filter(p => p.id !== id);
-                alert(`「${item.name}」をすべて消費しました！`);
-            }
-            
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-            renderStock();
-        }
-
-        function consumeStock(id) {
-            StockData = StockData.filter(item => item.id !== id);
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-            renderStock();
-        }
-
-        function deleteStock(id) {
-            if(confirm("この在庫項目を削除してもよろしいですか？")) {
-                StockData = StockData.filter(item => item.id !== id);
-                localStorage.setItem('stock_data', JSON.stringify(StockData));
-                renderStock();
-            }
-        }
-
-        function copyStockForMenu() {
-            if(StockData.length === 0) return alert("在庫が空っぽです");
-            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
-                         StockData.map(i => `- ${i.name}(${i.qty}${i.unit || '個'})`).join('\n');
-            navigator.clipboard.writeText(text).then(() => {
-                alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けてね。");
-            });
-        }
-    </script>
-</body>
-</html>
+                replyText = replyText.replace(/```json/g, '').replace(/
