@@ -312,6 +312,9 @@
                     <h3 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-muted);">📁 費目別の支出一覧</h3>
                     <div id="category-summary-list" style="font-size: 0.9rem; line-height: 1.6;"></div>
                 </div>
+
+                <!-- サマリー出力用ボタンを追加 -->
+                <button style="margin-top:15px; background-color:#4e8d7c; border:none; font-size:0.9rem; padding:10px;" onclick="copySummaryToClipboard();">📋 今月のサマリーをコピーする</button>
             </div>
 
             <div class="card">
@@ -485,7 +488,7 @@
 
         function deleteCategory(name) {
             if (confirm(`費目「${name}」を削除してもよろしいですか？`)) {
-                CustomCategories = CustomCategories.filter(c !== name);
+                CustomCategories = CustomCategories.filter(c => c !== name);
                 localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
                 updateCategoryDropdownAndTags();
             }
@@ -777,6 +780,9 @@
             renderStock();
         }
 
+        // コピー用のテキストを生成するための共通変数
+        let currentPeriodTextForCopy = "";
+
         function renderHistory() {
             const list = document.getElementById('history-list');
             if (!list) return;
@@ -799,7 +805,6 @@
             // 期間内データのみを抽出し、並び替え
             const filteredData = KakeiboData.filter(item => {
                 const itemDate = new Date(item.date);
-                // 時間をリセットして日付のみで比較
                 itemDate.setHours(0,0,0,0);
                 const pStart = new Date(period.start).setHours(0,0,0,0);
                 const pEnd = new Date(period.end).setHours(0,0,0,0);
@@ -819,28 +824,53 @@
             const remainingTitle = document.getElementById('remaining-budget-title');
             const remainingValue = document.getElementById('remaining-budget-value');
 
+            let budgetStatusText = "";
             if (remaining >= 0) {
                 remainingTitle.innerText = "⚖️ 今月の残り予算（セーフ！）";
                 remainingValue.innerText = `￥${remaining.toLocaleString()}`;
                 remainingValue.style.color = "var(--safe-color)";
                 remainingBox.style.borderLeft = "5px solid var(--safe-color)";
+                budgetStatusText = `残り予算（セーフ！）: ￥${remaining.toLocaleString()}`;
             } else {
                 remainingTitle.innerText = "⚠️ 予算オーバー（戒めモード！）";
                 remainingValue.innerText = `- ￥${Math.abs(remaining).toLocaleString()}`;
                 remainingValue.style.color = "var(--primary-color)";
                 remainingBox.style.borderLeft = "5px solid var(--primary-color)";
+                budgetStatusText = `予算オーバー（戒めモード！）: -￥${Math.abs(remaining).toLocaleString()}`;
             }
 
             // 費目別リストの表示
             const catSummaryList = document.getElementById('category-summary-list');
             catSummaryList.innerHTML = "";
+            let catTextForCopy = "";
+            
             if (Object.keys(catTotals).length === 0) {
                 catSummaryList.innerHTML = "<span style='color:var(--text-muted);'>期間内の支出はまだありません。</span>";
+                catTextForCopy = "  支出データなし\n";
             } else {
                 for (const [cat, amt] of Object.entries(catTotals)) {
                     catSummaryList.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>📁 ${cat}</span><strong style="color:#fff;">￥${amt.toLocaleString()}</strong></div>`;
+                    catTextForCopy += `  ・${cat}: ￥${amt.toLocaleString()}\n`;
                 }
             }
+
+            // コピー用テキストの組み立て
+            let historyTextForCopy = "";
+            const sortedHistory = [...filteredData].reverse();
+            if(sortedHistory.length > 0) {
+                sortedHistory.forEach(item => {
+                    historyTextForCopy += `- ${item.date} [${item.category}] ${item.shop}: ￥${item.amount.toLocaleString()} (${item.memo})\n`;
+                });
+            } else {
+                historyTextForCopy = "履歴なし\n";
+            }
+
+            currentPeriodTextForCopy = `📊 家計簿サマリー (${startStr} ～ ${endStr})\n` +
+                                       `----------------------------------------\n` +
+                                       `📉 総支出 / 目標予算: ￥${total.toLocaleString()} / ￥${monthlyBudget.toLocaleString()}\n` +
+                                       `⚖️ ${budgetStatusText}\n\n` +
+                                       `📁 費目別の合計:\n${catTextForCopy}\n` +
+                                       `📜 期間内の履歴一覧:\n${historyTextForCopy}`;
 
             // 履歴一覧の描画（期間内のみを新しい順で）
             if (filteredData.length === 0) {
@@ -848,7 +878,7 @@
                 return;
             }
 
-            [...filteredData].reverse().forEach(item => {
+            sortedHistory.forEach(item => {
                 let payEmoji = "💸";
                 if(item.payment === "クレジットカード") payEmoji = "💳";
                 if(item.payment === "ギフトカード") payEmoji = "🎁";
@@ -872,27 +902,67 @@
             });
         }
 
+        // サマリーをクリップボードにコピーする関数
+        function copySummaryToClipboard() {
+            if(!currentPeriodTextForCopy) return alert("データがありません");
+            navigator.clipboard.writeText(currentPeriodTextForCopy).then(() => {
+                alert("今月のサマリーと履歴データをコピーしました！スマホのメモ帳やLINEに貼り付けて保存してね。");
+            }).catch(err => {
+                alert("コピーに失敗しました。お手数ですが手動で選択してください。");
+            });
+        }
+
         function editData(id) {
             const item = KakeiboData.find(p => p.id === id);
             if (!item) return;
 
+            // 1. お店の修正
             const newShop = prompt("お店の名前を修正:", item.shop || "");
             if (newShop === null) return;
 
+            // 2. 品名・メモの修正
             const newMemo = prompt("品名・メモを修正:", item.memo);
             if (newMemo === null) return;
 
+            // 3. 費目の修正（選択肢を提示する形）
+            let categoryPromptText = "費目（カテゴリー）を修正してください。\n現在の設定: [" + item.category + "]\n\n設定可能な費目一覧:\n";
+            CustomCategories.forEach((cat, idx) => {
+                categoryPromptText += `${idx + 1}: ${cat}\n`;
+            });
+            categoryPromptText += "\n上記に無い新しい費目にしたい場合は、直接その文字を入力してください。";
+            
+            const newCategoryInput = prompt(categoryPromptText, item.category);
+            if (newCategoryInput === null) return;
+            
+            let newCategory = newCategoryInput.trim();
+            // もし数字（1, 2, 3..）が入力されたら、対応する費目名を自動でセット
+            const numIdx = parseInt(newCategory) - 1;
+            if(!isNaN(numIdx) && CustomCategories[numIdx]) {
+                newCategory = CustomCategories[numIdx];
+            }
+
+            // 4. 金額の修正
             const newAmountStr = prompt("合計金額を修正（半角数字）:", item.amount);
             if (newAmountStr === null) return;
             const newAmount = parseInt(newAmountStr) || 0;
 
+            // データの反映
             item.shop = newShop;
             item.memo = newMemo;
+            item.category = newCategory || "その他";
             item.amount = newAmount;
+            
+            // もしユーザーが未登録の新しい費目を打ち込んでいたら、自動でマスターに追加しておく親切設計
+            if (newCategory && !CustomCategories.includes(newCategory)) {
+                CustomCategories.push(newCategory);
+                localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
+                updateCategoryDropdownAndTags();
+            }
+
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
             
             renderHistory();
-            alert("修正しました！");
+            alert("履歴の修正が完了しました！");
         }
 
         function deleteData(id) {
@@ -913,7 +983,7 @@
                 return;
             }
 
-            const units = ["個", "パック", "本", "袋", "g", "玉", "缶"];
+            const units = ["個", "パック", "本", "束", "袋", "g", "玉", "缶"];
 
             [...StockData].reverse().forEach(item => {
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
