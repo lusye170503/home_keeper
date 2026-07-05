@@ -213,6 +213,7 @@
             margin: 0 2px;
         }
 
+        /* インライン配置用の小さなセレクトボックス */
         select.select-inline-unit {
             width: auto !important;
             display: inline-block !important;
@@ -246,7 +247,6 @@
             </div>
 
             <div class="card">
-                <!-- 「ししゅつふぉーむ」を漢字とカタカナに修正 -->
                 <h2>✍️ 手入力 / 支出フォーム</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
@@ -265,6 +265,8 @@
                 <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）" oninput="countItems();">
                 <div id="item-count-display" style="font-size: 0.9rem; color: #4e8d7c; margin: -4px 0 8px 4px; font-weight: bold;">合計: 0 アイテム</div>
                 
+                <!-- 単価と数量の入力欄はご要望により完全削除しました -->
+
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
                 <label style="display:flex; align-items:center; margin: 15px 0; font-size: 0.95rem; cursor: pointer;">
@@ -321,7 +323,7 @@
         <div id="page-analysis" class="page">
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">Gemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">あっきーさんのGemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
                 <input type="password" id="settings-api-key" placeholder="AQ.Ab8... で始まるキーを貼り付け" onchange="saveApiKey();">
                 <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0; display:none;" id="key-status">✅ スマホに鍵を安全に記憶しました！</p>
             </div>
@@ -557,4 +559,301 @@
                 const json = await response.json();
                 let replyText = json.candidates[0].content.parts[0].text;
                 
-                replyText = replyText.replace(/```json/g, '').replace(/
+                replyText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const result = JSON.parse(replyText);
+
+                document.getElementById('input-amount').value = result.amount || 0;
+                document.getElementById('input-shop').value = result.shop || "";
+                document.getElementById('input-memo').value = result.memo || "";
+                
+                if(result.payment) {
+                    const paySelect = document.getElementById('input-payment');
+                    if(result.payment.includes('カード') || result.payment.includes('クレジット')) {
+                        paySelect.value = 'クレジットカード';
+                    } else if(result.payment.includes('券') || result.payment.includes('ギフト')) {
+                        paySelect.value = 'ギフトカード';
+                    } else {
+                        paySelect.value = '現金';
+                    }
+                }
+
+                const syncCheckbox = document.getElementById('sync-stock');
+                if (syncCheckbox) {
+                    syncCheckbox.checked = true;
+                }
+
+                statusEl.innerHTML = `<span style='color:#4e8d7c;'>✅ 計 ${selectedImagesBase64.length} 枚の合算解析が完了しました！追加撮影も可能です。</span>`;
+                countItems();
+
+            } catch (error) {
+                console.error(error);
+                statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラー。もう一度やり直すか手動で入力してください。</span>";
+            }
+        }
+
+        function addData() {
+            const date = document.getElementById('input-date').value;
+            const shop = document.getElementById('input-shop').value.trim() || "お店不明";
+            const amount = parseInt(document.getElementById('input-amount').value) || 0;
+            const payment = document.getElementById('input-payment').value;
+            const category = document.getElementById('input-category').value;
+            const memo = document.getElementById('input-memo').value || "未分類";
+            
+            if(amount === 0) return alert("金額を入力してください");
+
+            KakeiboData.push({ 
+                id: Date.now(), 
+                date, 
+                shop, 
+                amount, 
+                unitPrice: null,
+                payment, 
+                category, 
+                memo,
+                qty: 1
+            });
+            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+
+            const isChecked = document.getElementById('sync-stock').checked;
+            if(isChecked) {
+                const items = memo.split(/[・、, \n]+/);
+                let addedCount = 0;
+
+                items.forEach((itemName, index) => {
+                    const trimmedName = itemName.trim();
+                    if(!trimmedName || trimmedName === "レシート購入品") return;
+                    
+                    StockData.push({ 
+                        id: Date.now() + index, 
+                        name: trimmedName, 
+                        qty: 1, 
+                        unit: '個', 
+                        date, 
+                        source: payment === 'もらい物' ? '直接追加' : '購入'
+                    });
+                    addedCount++;
+                });
+                
+                if (addedCount > 0) {
+                    localStorage.setItem('stock_data', JSON.stringify(StockData));
+                }
+            }
+
+            alert("登録が完了しました！");
+            
+            selectedImagesBase64 = [];
+            renderPreviews();
+
+            document.getElementById('input-shop').value = "";
+            document.getElementById('input-amount').value = "";
+            document.getElementById('input-memo').value = "";
+            document.getElementById('sync-stock').checked = false; 
+            document.getElementById('upload-status').innerHTML = "タップしてレシートを撮影・選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（長い場合は上から順に何パシャしてもOK！）</span>";
+            countItems();
+        }
+
+        function addStockDirect() {
+            const name = document.getElementById('direct-stock-name').value;
+            const qty = parseFloat(document.getElementById('direct-stock-qty').value) || 1;
+            const unit = document.getElementById('direct-stock-unit').value;
+            
+            if(!name) return alert("品名を入力してください");
+
+            const today = new Date().toISOString().substring(0, 10);
+
+            StockData.push({ 
+                id: Date.now(), 
+                name: name, 
+                qty: qty,
+                unit: unit,
+                date: today,
+                source: '直接追加' 
+            });
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+
+            alert("おうちキーパーにストックしました！");
+            document.getElementById('direct-stock-name').value = "";
+            document.getElementById('direct-stock-qty').value = "1";
+            renderStock();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            let total = 0;
+
+            [...KakeiboData].reverse().forEach(item => {
+                total += item.amount;
+                
+                let payEmoji = "💸";
+                if(item.payment === "クレジットカード") payEmoji = "💳";
+                if(item.payment === "ギフトカード") payEmoji = "🎁";
+                if(item.payment === "もらい物") payEmoji = "💝";
+
+                list.innerHTML += `
+                    <li class="flex-item">
+                        <div class="flex-cell">
+                            <span style="font-size:0.8rem; color:var(--text-muted);">${item.date}</span> 
+                            <span style="color:#4e8d7c; font-size:0.85rem; font-weight:bold;">🛒 ${item.shop}</span>
+                            <span style="background-color:#3d3d3d; padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#ccc; margin-left:5px;">${payEmoji} ${item.payment || '現金'}</span><br>
+                            <strong style="font-size:1.05rem;">${item.memo}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">[${item.category}]</span><br>
+                            <button class="btn-small" onclick="editData(${item.id})">✏️ 修正</button>
+                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteData(${item.id})">🗑️ 削除</button>
+                        </div>
+                        <div class="flex-cell text-right" style="font-weight:bold; color:var(--primary-color); font-size:1.1rem;">
+                            ￥${item.amount.toLocaleString()}
+                        </div>
+                    </li>
+                `;
+            });
+            document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
+        }
+
+        function editData(id) {
+            const item = KakeiboData.find(p => p.id === id);
+            if (!item) return;
+
+            const newShop = prompt("お店の名前を修正:", item.shop || "");
+            if (newShop === null) return;
+
+            const newMemo = prompt("品名・メモを修正:", item.memo);
+            if (newMemo === null) return;
+
+            const newAmountStr = prompt("合計金額を修正（半角数字）:", item.amount);
+            if (newAmountStr === null) return;
+            const newAmount = parseInt(newAmountStr) || 0;
+
+            item.shop = newShop;
+            item.memo = newMemo;
+            item.amount = newAmount;
+            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+            
+            renderHistory();
+            alert("修正しました！");
+        }
+
+        function deleteData(id) {
+            if(confirm("この履歴を削除してもよろしいですか？")) {
+                KakeiboData = KakeiboData.filter(item => item.id !== id);
+                localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
+                renderHistory();
+            }
+        }
+
+        // 在庫管理（ストック一覧）の描画
+        function renderStock() {
+            const list = document.getElementById('stock-list');
+            list.innerHTML = "";
+
+            if(StockData.length === 0) {
+                list.innerHTML = `<p style="color:var(--text-muted); text-align:center;">在庫はありません</p>`;
+                return;
+            }
+
+            const units = ["個", "パック", "本", "袋", "g", "玉", "缶"];
+
+            [...StockData].reverse().forEach(item => {
+                const badge = item.source === '直接追加' ? '🎁' : '🛒';
+                const currentUnit = item.unit || '個';
+                
+                // 単位変更用インラインドロップダウンのHTMLを生成
+                let unitOptions = "";
+                units.forEach(u => {
+                    unitOptions += `<option value="${u}" ${currentUnit === u ? 'selected' : ''}>${u}</option>`;
+                });
+
+                let qtyControl = `
+                    <button class="btn-qty" onclick="changeQty(${item.id}, -1)">-</button>
+                    <span style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; min-width:30px; display:inline-block; text-align:center;">${item.qty}</span>
+                    <button class="btn-qty" onclick="changeQty(${item.id}, 1)">+</button>
+                    <select class="select-inline-unit" onchange="changeStockUnit(${item.id}, this.value)">
+                        ${unitOptions}
+                    </select>
+                `;
+                
+                list.innerHTML += `
+                    <li class="flex-item" id="stock-${item.id}">
+                        <div class="flex-cell">
+                            <strong style="font-size:1.05rem;">${badge} ${item.name}</strong><br>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span><br>
+                            <!-- ストックの名称・誤字をいつでも修正できるボタンを新設 -->
+                            <button class="btn-small" onclick="editStockName(${item.id})">✏️ 品名修正</button>
+                        </div>
+                        <div class="flex-cell text-right" style="width:175px;">
+                            <div style="margin-bottom:5px;">${qtyControl}</div>
+                            <button class="btn-small" style="background-color:#4e8d7c;" onclick="consumeStock(${item.id})">🍽️ 全部消費</button>
+                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteStock(${item.id})">🗑️ 削除</button>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        // 数量のプラスマイナス変更
+        function changeQty(id, amount) {
+            const item = StockData.find(p => p.id === id);
+            if(!item) return;
+
+            item.qty = (parseFloat(item.qty) || 0) + amount;
+            
+            if(item.qty <= 0) {
+                StockData = StockData.filter(p => p.id !== id);
+                alert(`「${item.name}」をすべて消費しました！`);
+            }
+            
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+            renderStock();
+        }
+
+        // その場で単位（個・パック等）を切り替えて即時記憶する関数
+        function changeStockUnit(id, newUnit) {
+            const item = StockData.find(p => p.id === id);
+            if(!item) return;
+
+            item.unit = newUnit;
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+            // 再描画せずに裏で静かに記憶（使い心地を滑らかにするため）
+        }
+
+        // 在庫の名称を修正する関数
+        function editStockName(id) {
+            const item = StockData.find(p => p.id === id);
+            if (!item) return;
+
+            const newName = prompt("商品名・食材名を修正:", item.name);
+            if (newName === null) return; // キャンセルされた場合
+            const trimmed = newName.trim();
+            if (!trimmed) return alert("名前を空欄にはできません");
+
+            item.name = trimmed;
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+            
+            renderStock();
+            alert("在庫の商品名を修正しました！");
+        }
+
+        function consumeStock(id) {
+            StockData = StockData.filter(item => item.id !== id);
+            localStorage.setItem('stock_data', JSON.stringify(StockData));
+            renderStock();
+        }
+
+        function deleteStock(id) {
+            if(confirm("この在庫項目を削除してもよろしいですか？")) {
+                StockData = StockData.filter(item => item.id !== id);
+                localStorage.setItem('stock_data', JSON.stringify(StockData));
+                renderStock();
+            }
+        }
+
+        function copyStockForMenu() {
+            if(StockData.length === 0) return alert("在庫が空っぽです");
+            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
+                         StockData.map(i => `- ${i.name}(${i.qty}${i.unit || '個'})`).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けてね。");
+            });
+        }
+    </script>
+</body>
+</html>
