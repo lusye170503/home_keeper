@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ずぼらかけいぼ＆おうちキーパー</title>
     
+    <!-- iPhone用PWA設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ずぼらかけいぼ">
@@ -198,6 +199,7 @@
 
     <div class="container">
         
+        <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
                 <h2>📸 れしーと自動解析</h2>
@@ -221,6 +223,7 @@
                         <option value="もらい物">💝 もらい物</option>
                         <option value="その他">🌀 その他</option>
                     </select>
+                    <!-- 費目ドロップダウン -->
                     <select id="input-category"></select>
                 </div>
 
@@ -230,7 +233,7 @@
                 <div class="row-flex">
                     <input type="number" id="input-unit-price" placeholder="単価（空欄でもOK）" inputmode="numeric" oninput="calculateTotal();">
                     <input type="number" id="input-qty" placeholder="数量" inputmode="numeric" value="1" oninput="calculateTotal();">
-                    </div>
+                </div>
 
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
@@ -243,6 +246,7 @@
             </div>
         </div>
 
+        <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
                 <h2>📊 今月の合計ししゅつ</h2>
@@ -254,6 +258,7 @@
             </div>
         </div>
 
+        <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
                 <h2>🎁 ざいこを直接追加（もらい物・今のストック）</h2>
@@ -261,12 +266,12 @@
                 
                 <div class="row-flex">
                     <input type="number" id="direct-stock-qty" placeholder="数量・個数" inputmode="numeric" value="1">
+                    <!-- 重複を綺麗に直したクリーンな単位選択エリア -->
                     <select id="direct-stock-unit">
                         <option value="個">個</option>
                         <option value="パック">パック</option>
                         <option value="本">本</option>
                         <option value="袋">袋</option>
-                        <option value="パック">ﾊﾟｯｸ</option>
                         <option value="g">g</option>
                         <option value="玉">玉</option>
                         <option value="缶">缶</option>
@@ -283,6 +288,7 @@
             </div>
         </div>
 
+        <!-- 4. 設定・ラボ画面 -->
         <div id="page-analysis" class="page">
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
@@ -328,7 +334,6 @@
         let KakeiboData = JSON.parse(localStorage.getItem('kakeibo_data')) || [];
         let StockData = JSON.parse(localStorage.getItem('stock_data')) || [];
         
-        // 初期状態の基本費目リスト
         let DefaultCategories = ["食費", "日用品", "趣味・娯楽", "その他"];
         let CustomCategories = JSON.parse(localStorage.getItem('custom_categories')) || DefaultCategories;
 
@@ -343,7 +348,6 @@
 
         document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
 
-        // 📝 品名・メモ欄から「アイテム数」を割り出す自動計算
         function countItems() {
             const text = document.getElementById('input-memo').value.trim();
             const display = document.getElementById('item-count-display');
@@ -351,12 +355,10 @@
                 display.innerText = "合計: 0 アイテム";
                 return;
             }
-            // 「・」「、」「,」「改行」のいずれかで文字を区切って数える
             const items = text.split(/[・、, \n]+/).filter(item => item.trim() !== "");
             display.innerText = `合計: ${items.length} アイテム`;
         }
 
-        // 📁 費目のドロップダウンと設定画面のタグ一覧を最新に更新する処理
         function updateCategoryDropdownAndTags() {
             const selectEl = document.getElementById('input-category');
             const tagsEl = document.getElementById('custom-categories-tags');
@@ -371,7 +373,6 @@
             if (tagsEl) {
                 tagsEl.innerHTML = "";
                 CustomCategories.forEach(cat => {
-                    // 基本費目以外は削除用の「×」をつける
                     const isDefault = DefaultCategories.includes(cat);
                     tagsEl.innerHTML += `
                         <span onclick="${isDefault ? '' : `deleteCategory('${cat}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
@@ -381,7 +382,6 @@
             }
         }
 
-        // ➕ 新しい費目の追加
         function addNewCategory() {
             const input = document.getElementById('new-category-name');
             const name = input.value.trim();
@@ -395,7 +395,6 @@
             alert(`費目「${name}」を追加しました！`);
         }
 
-        // ❌ 追加した費目の削除
         function deleteCategory(name) {
             if (confirm(`費目「${name}」を削除してもよろしいですか？`)) {
                 CustomCategories = CustomCategories.filter(c => c !== name);
@@ -515,7 +514,7 @@
                 }
 
                 statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 全明細の解析が完了しました！</span>";
-                countItems(); // アイテム数を自動カウント
+                countItems();
 
             } catch (error) {
                 console.error(error);
@@ -562,7 +561,7 @@
                         id: Date.now() + index, 
                         name: trimmedName, 
                         qty: 1, 
-                        unit: '個', // 連動時はデフォルトで「個」
+                        unit: '個', 
                         date, 
                         source: payment === 'もらい物' ? '直接追加' : '購入'
                     });
@@ -589,7 +588,7 @@
         function addStockDirect() {
             const name = document.getElementById('direct-stock-name').value;
             const qty = parseFloat(document.getElementById('direct-stock-qty').value) || 1;
-            const unit = document.getElementById('direct-stock-unit').value; // 選んだ単位を取得
+            const unit = document.getElementById('direct-stock-unit').value;
             
             if(!name) return alert("品名を入力してください");
 
