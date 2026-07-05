@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ずぼらかけいぼ＆おうちキーパー</title>
     
-    <!-- iPhone用PWA設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ずぼらかけいぼ">
@@ -25,7 +24,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 0;
-            padding-bottom: 80px; /* ナビバーにかぶらないよう余白を確保 */
+            padding-bottom: 80px;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
@@ -59,7 +58,6 @@
             padding-left: 8px;
         }
 
-        /* 画面切り替え用の設定 */
         .page {
             display: none;
         }
@@ -93,7 +91,6 @@
             -webkit-appearance: none;
         }
 
-        /* 🛠️ チェックボックス専用：他を邪魔せず、自分だけしっかり動く最強設定 */
         input[type="checkbox"] {
             -webkit-appearance: checkbox !important;
             appearance: checkbox !important;
@@ -122,7 +119,6 @@
             opacity: 0.8;
         }
 
-        /* 📱 下部メニュータブ：干渉を完全に防ぎ、100%確実にタップ反応する新構造 */
         .nav-bar {
             position: fixed;
             bottom: 0;
@@ -202,19 +198,18 @@
 
     <div class="container">
         
-        <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
-                <h2>📸 レシート自動解析</h2>
+                <h2>📸 れしーと自動解析</h2>
                 <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
                     <span style="font-size: 2.5rem;">📁</span>
-                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてレシート画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが全品目を漏らさず読み込みます）</span></p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてれしーと画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが全品目を漏らさず読み込みます）</span></p>
                 </div>
                 <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="analyzeReceiptWithGemini(this);">
             </div>
 
             <div class="card">
-                <h2>✍️ 手入力 / 支出フォーム</h2>
+                <h2>✍️ 手入力 / ししゅつふぉーむ</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
                 
@@ -226,31 +221,19 @@
                         <option value="もらい物">💝 もらい物</option>
                         <option value="その他">🌀 その他</option>
                     </select>
-                    <select id="input-category">
-                        <option value="食費">食費</option>
-                        <option value="日用品">日用品</option>
-                        <option value="趣味・娯楽">趣味・娯楽</option>
-                        <option value="その他">その他</option>
-                    </select>
+                    <select id="input-category"></select>
                 </div>
 
-                <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）">
+                <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）" oninput="countItems();">
+                <div id="item-count-display" style="font-size: 0.9rem; color: #4e8d7c; margin: -4px 0 8px 4px; font-weight: bold;">合計: 0 アイテム</div>
                 
                 <div class="row-flex">
                     <input type="number" id="input-unit-price" placeholder="単価（空欄でもOK）" inputmode="numeric" oninput="calculateTotal();">
                     <input type="number" id="input-qty" placeholder="数量" inputmode="numeric" value="1" oninput="calculateTotal();">
-                    <select id="input-unit">
-                        <option value="個">個</option>
-                        <option value="g">g</option>
-                        <option value="本">本</option>
-                        <option value="パック">ﾊﾟｯｸ</option>
-                        <option value="袋">袋</option>
-                    </select>
-                </div>
+                    </div>
 
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
-                <!-- タップ領域を広げた安全なラベル構造 -->
                 <label style="display:flex; align-items:center; margin: 15px 0; font-size: 0.95rem; cursor: pointer;">
                     <input type="checkbox" id="sync-stock">
                     <span>同時におうちキーパー（在庫）に登録する</span>
@@ -260,32 +243,33 @@
             </div>
         </div>
 
-        <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
-                <h2>📊 今月の合計支出</h2>
+                <h2>📊 今月の合計ししゅつ</h2>
                 <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0;" id="total-amount">0 円</div>
             </div>
             <div class="card">
-                <h2>📜 履歴一覧</h2>
+                <h2>📜 りれき一覧</h2>
                 <ul class="flex-list" id="history-list"></ul>
             </div>
         </div>
 
-        <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
-                <h2>🎁 在庫を直接追加（もらい物・今のストック）</h2>
+                <h2>🎁 ざいこを直接追加（もらい物・今のストック）</h2>
                 <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
                 
                 <div class="row-flex">
                     <input type="number" id="direct-stock-qty" placeholder="数量・個数" inputmode="numeric" value="1">
                     <select id="direct-stock-unit">
                         <option value="個">個</option>
-                        <option value="g">g</option>
-                        <option value="本">本</option>
                         <option value="パック">パック</option>
+                        <option value="本">本</option>
                         <option value="袋">袋</option>
+                        <option value="パック">ﾊﾟｯｸ</option>
+                        <option value="g">g</option>
+                        <option value="玉">玉</option>
+                        <option value="缶">缶</option>
                     </select>
                 </div>
 
@@ -299,13 +283,25 @@
             </div>
         </div>
 
-        <!-- 4. 設定・ラボ画面 -->
         <div id="page-analysis" class="page">
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">あっきーさんのGemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
                 <input type="password" id="settings-api-key" placeholder="AQ.Ab8... で始まるキーを貼り付け" onchange="saveApiKey();">
                 <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0; display:none;" id="key-status">✅ スマホに鍵を安全に記憶しました！</p>
+            </div>
+
+            <div class="card" style="border: 1px solid #4e8d7c;">
+                <h2>📁 費目（カテゴリー）の追加・管理</h2>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">家計簿で使いたいオリジナルの費目を自由に追加できます。</p>
+                <div class="row-flex">
+                    <input type="text" id="new-category-name" placeholder="新しい費目（例：猫費、美容費）">
+                    <button style="width:80px; background-color:#4e8d7c; font-weight:bold; margin:8px 0;" onclick="addNewCategory();">追加</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:5px;">現在の費目一覧（タップで削除可能）:</p>
+                    <div id="custom-categories-tags" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
             </div>
 
             <div class="card">
@@ -321,7 +317,6 @@
 
     </div>
 
-    <!-- 📱 下部タブナビゲーション（絶対に裏切らないタップ構造） -->
     <div class="nav-bar">
         <div class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</div>
         <div class="nav-item" onclick="switchPage('history', this);"><span class="nav-icon">📊</span>家計簿</div>
@@ -332,6 +327,10 @@
     <script>
         let KakeiboData = JSON.parse(localStorage.getItem('kakeibo_data')) || [];
         let StockData = JSON.parse(localStorage.getItem('stock_data')) || [];
+        
+        // 初期状態の基本費目リスト
+        let DefaultCategories = ["食費", "日用品", "趣味・娯楽", "その他"];
+        let CustomCategories = JSON.parse(localStorage.getItem('custom_categories')) || DefaultCategories;
 
         document.addEventListener("DOMContentLoaded", () => {
             const savedKey = localStorage.getItem('gemini_api_key');
@@ -339,31 +338,87 @@
                 document.getElementById('settings-api-key').value = savedKey;
                 document.getElementById('key-status').style.display = 'block';
             }
+            updateCategoryDropdownAndTags();
         });
 
         document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
 
-        // 🛠️ どんな環境でも絶対に確実に画面を切り替える決定版関数
+        // 📝 品名・メモ欄から「アイテム数」を割り出す自動計算
+        function countItems() {
+            const text = document.getElementById('input-memo').value.trim();
+            const display = document.getElementById('item-count-display');
+            if (!text) {
+                display.innerText = "合計: 0 アイテム";
+                return;
+            }
+            // 「・」「、」「,」「改行」のいずれかで文字を区切って数える
+            const items = text.split(/[・、, \n]+/).filter(item => item.trim() !== "");
+            display.innerText = `合計: ${items.length} アイテム`;
+        }
+
+        // 📁 費目のドロップダウンと設定画面のタグ一覧を最新に更新する処理
+        function updateCategoryDropdownAndTags() {
+            const selectEl = document.getElementById('input-category');
+            const tagsEl = document.getElementById('custom-categories-tags');
+            
+            if (selectEl) {
+                selectEl.innerHTML = "";
+                CustomCategories.forEach(cat => {
+                    selectEl.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            }
+
+            if (tagsEl) {
+                tagsEl.innerHTML = "";
+                CustomCategories.forEach(cat => {
+                    // 基本費目以外は削除用の「×」をつける
+                    const isDefault = DefaultCategories.includes(cat);
+                    tagsEl.innerHTML += `
+                        <span onclick="${isDefault ? '' : `deleteCategory('${cat}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
+                            ${cat} ${isDefault ? '' : '×'}
+                        </span>`;
+                });
+            }
+        }
+
+        // ➕ 新しい費目の追加
+        function addNewCategory() {
+            const input = document.getElementById('new-category-name');
+            const name = input.value.trim();
+            if (!name) return alert("費目名を入力してください");
+            if (CustomCategories.includes(name)) return alert("その費目は既に存在します");
+
+            CustomCategories.push(name);
+            localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
+            updateCategoryDropdownAndTags();
+            input.value = "";
+            alert(`費目「${name}」を追加しました！`);
+        }
+
+        // ❌ 追加した費目の削除
+        function deleteCategory(name) {
+            if (confirm(`費目「${name}」を削除してもよろしいですか？`)) {
+                CustomCategories = CustomCategories.filter(c => c !== name);
+                localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
+                updateCategoryDropdownAndTags();
+            }
+        }
+
         function switchPage(pageId, element) {
-            // 一旦すべてのページを隠す
             document.querySelectorAll('.page').forEach(p => {
                 p.classList.remove('active');
                 p.style.display = 'none';
             });
-            // すべてのタブの「色（アクティブ）」を消す
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             
-            // 狙ったページだけをバシッと表示する
             const targetPage = document.getElementById('page-' + pageId);
             if (targetPage) {
                 targetPage.classList.add('active');
                 targetPage.style.display = 'block';
             }
             
-            // 押したタブの色をピンクに変える
             element.classList.add('active');
 
-            // 画面ごとの中身の再読み込み
             if(pageId === 'history') renderHistory();
             if(pageId === 'stock') renderStock();
         }
@@ -392,7 +447,7 @@
             
             const currentApiKey = localStorage.getItem('gemini_api_key');
             if(!currentApiKey) {
-                alert("右下の「⚙️せってい/らぼ」タブから、あっきーさんのAPIキーを先に登録してください！");
+                alert("右下の「⚙️設定/ラボ」タブから、APIキーを先に登録してください！");
                 return;
             }
 
@@ -415,9 +470,8 @@
                                    "3. payment: 支払い方法（『現金』『クレジットカード』など）\n" +
                                    "4. memo: レシートに記載されている【すべての購入商品名・食材名】を、省略せずにすべて「・」で繋いだ1つの文字列にしてください（例：卵・牛乳・豚コマ肉・キャベツ）。個別の金額や値引きの文字は除外して品名だけにしてください。\n" +
                                    "5. unit_price: 空欄(null)にしてください。\n" +
-                                   "6. qty: 購入した品目の総数、または 1 にしてください。\n" +
-                                   "7. unit: 「個」にしてください。\n\n" +
-                                   "JSON形式:\n{\"amount\": 数字, \"shop\": \"文字列\", \"payment\": \"文字列\", \"memo\": \"文字列\", \"unit_price\": null, \"qty\": 1, \"unit\": \"個\"}";
+                                   "6. qty: 購入した品目の総数、または 1 にしてください。\n\n" +
+                                   "JSON形式:\n{\"amount\": 数字, \"shop\": \"文字列\", \"payment\": \"文字列\", \"memo\": \"文字列\", \"unit_price\": null, \"qty\": 1}";
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -443,7 +497,6 @@
                 document.getElementById('input-memo').value = result.memo || "";
                 document.getElementById('input-unit-price').value = "";
                 document.getElementById('input-qty').value = result.qty || 1;
-                document.getElementById('input-unit').value = "個";
                 
                 if(result.payment) {
                     const paySelect = document.getElementById('input-payment');
@@ -456,13 +509,13 @@
                     }
                 }
 
-                // チェックボックスを確実に強制ONにする
                 const syncCheckbox = document.getElementById('sync-stock');
                 if (syncCheckbox) {
                     syncCheckbox.checked = true;
                 }
 
                 statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 全明細の解析が完了しました！</span>";
+                countItems(); // アイテム数を自動カウント
 
             } catch (error) {
                 console.error(error);
@@ -479,9 +532,7 @@
             const category = document.getElementById('input-category').value;
             const memo = document.getElementById('input-memo').value || "未分類";
             const qty = parseFloat(document.getElementById('input-qty').value) || 1;
-            const unit = document.getElementById('input-unit').value;
             
-            // 画面のチェックボックスの今の状態を取得
             const isChecked = document.getElementById('sync-stock').checked;
 
             if(amount === 0) return alert("金額を入力してください");
@@ -495,12 +546,10 @@
                 payment, 
                 category, 
                 memo,
-                qty,
-                unit
+                qty
             });
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
-            // おうちキーパー（在庫）への連動処理
             if(isChecked) {
                 const items = memo.split(/[・、, \n]+/);
                 let addedCount = 0;
@@ -513,7 +562,7 @@
                         id: Date.now() + index, 
                         name: trimmedName, 
                         qty: 1, 
-                        unit: '個',
+                        unit: '個', // 連動時はデフォルトで「個」
                         date, 
                         source: payment === 'もらい物' ? '直接追加' : '購入'
                     });
@@ -527,7 +576,6 @@
 
             alert("登録が完了しました！");
             
-            // 入力欄のリセット
             document.getElementById('input-shop').value = "";
             document.getElementById('input-unit-price').value = "";
             document.getElementById('input-qty').value = "1";
@@ -535,12 +583,13 @@
             document.getElementById('input-memo').value = "";
             document.getElementById('sync-stock').checked = false; 
             document.getElementById('upload-status').innerHTML = "タップしてれしーと画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（AIが全品目を漏らさず読み込みます）</span>";
+            countItems();
         }
 
         function addStockDirect() {
             const name = document.getElementById('direct-stock-name').value;
             const qty = parseFloat(document.getElementById('direct-stock-qty').value) || 1;
-            const unit = document.getElementById('direct-stock-unit').value;
+            const unit = document.getElementById('direct-stock-unit').value; // 選んだ単位を取得
             
             if(!name) return alert("品名を入力してください");
 
@@ -575,7 +624,7 @@
                 if(item.payment === "ギフトカード") payEmoji = "🎁";
                 if(item.payment === "もらい物") payEmoji = "💝";
 
-                const unitPriceDisplay = item.unitPrice ? `<span style="color:#aaa; font-size:0.8rem;">(単価:￥${item.unitPrice} × ${item.qty}${item.unit})</span>` : `(${item.qty}${item.unit})`;
+                const unitPriceDisplay = item.unitPrice ? `<span style="color:#aaa; font-size:0.8rem;">(単価:￥${item.unitPrice} × ${item.qty})</span>` : `(${item.qty})`;
 
                 list.innerHTML += `
                     <li class="flex-item">
@@ -638,19 +687,14 @@
 
             [...StockData].reverse().forEach(item => {
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
-                const isCountable = (item.unit === '個' || item.unit === '本' || item.unit === 'パック' || item.unit === '袋');
+                const currentUnit = item.unit || '個';
                 
-                let qtyControl = '';
-                if(isCountable) {
-                    qtyControl = `
-                        <button class="btn-qty" onclick="changeQty(${item.id}, -1)">-</button>
-                        <span style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; min-width:30px; display:inline-block; text-align:center;">${item.qty}</span>
-                        <button class="btn-qty" onclick="changeQty(${item.id}, 1)">+</button>
-                        <span>${item.unit}</span>
-                    `;
-                } else {
-                    qtyControl = `<span style="color:var(--primary-color); font-weight:bold;">${item.qty}${item.unit}</span>`;
-                }
+                let qtyControl = `
+                    <button class="btn-qty" onclick="changeQty(${item.id}, -1)">-</button>
+                    <span style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; min-width:30px; display:inline-block; text-align:center;">${item.qty}</span>
+                    <button class="btn-qty" onclick="changeQty(${item.id}, 1)">+</button>
+                    <span>${currentUnit}</span>
+                `;
                 
                 list.innerHTML += `
                     <li class="flex-item" id="stock-${item.id}">
@@ -700,7 +744,7 @@
         function copyStockForMenu() {
             if(StockData.length === 0) return alert("在庫が空っぽです");
             const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
-                         StockData.map(i => `- ${i.name}(${i.qty}${i.unit})`).join('\n');
+                         StockData.map(i => `- ${i.name}(${i.qty}${i.unit || '個'})`).join('\n');
             navigator.clipboard.writeText(text).then(() => {
                 alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けてね。");
             });
