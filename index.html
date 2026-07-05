@@ -213,7 +213,6 @@
             margin: 0 2px;
         }
 
-        /* インライン配置用の小さなセレクトボックス */
         select.select-inline-unit {
             width: auto !important;
             display: inline-block !important;
@@ -265,8 +264,6 @@
                 <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）" oninput="countItems();">
                 <div id="item-count-display" style="font-size: 0.9rem; color: #4e8d7c; margin: -4px 0 8px 4px; font-weight: bold;">合計: 0 アイテム</div>
                 
-                <!-- 単価と数量の入力欄はご要望により完全削除しました -->
-
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
                 <label style="display:flex; align-items:center; margin: 15px 0; font-size: 0.95rem; cursor: pointer;">
@@ -323,7 +320,7 @@
         <div id="page-analysis" class="page">
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">あっきーさんのGemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">Gemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
                 <input type="password" id="settings-api-key" placeholder="AQ.Ab8... で始まるキーを貼り付け" onchange="saveApiKey();">
                 <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0; display:none;" id="key-status">✅ スマホに鍵を安全に記憶しました！</p>
             </div>
@@ -379,11 +376,14 @@
             updateCategoryDropdownAndTags();
         });
 
-        document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
+        if (document.getElementById('input-date')) {
+            document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
+        }
 
         function countItems() {
             const text = document.getElementById('input-memo').value.trim();
             const display = document.getElementById('item-count-display');
+            if (!display) return;
             if (!text) {
                 display.innerText = "合計: 0 アイテム";
                 return;
@@ -417,6 +417,7 @@
 
         function addNewCategory() {
             const input = document.getElementById('new-category-name');
+            if (!input) return;
             const name = input.value.trim();
             if (!name) return alert("費目名を入力してください");
             if (CustomCategories.includes(name)) return alert("その費目は既に存在します");
@@ -449,7 +450,9 @@
                 targetPage.style.display = 'block';
             }
             
-            element.classList.add('active');
+            if (element) {
+                element.classList.add('active');
+            }
 
             if(pageId === 'history') renderHistory();
             if(pageId === 'stock') renderStock();
@@ -497,6 +500,7 @@
         function renderPreviews() {
             const previewArea = document.getElementById('preview-area');
             const resetBtn = document.getElementById('btn-reset-images');
+            if (!previewArea) return;
             previewArea.innerHTML = "";
 
             selectedImagesBase64.forEach((img, idx) => {
@@ -507,17 +511,22 @@
                     </div>`;
             });
 
-            if(selectedImagesBase64.length > 0) {
-                resetBtn.style.display = "inline-block";
-            } else {
-                resetBtn.style.display = "none";
+            if(resetBtn) {
+                if(selectedImagesBase64.length > 0) {
+                    resetBtn.style.display = "inline-block";
+                } else {
+                    resetBtn.style.display = "none";
+                }
             }
         }
 
         function resetSelectedImages() {
             selectedImagesBase64 = [];
             renderPreviews();
-            document.getElementById('upload-status').innerHTML = "キャンセルしました。タップして新しく撮影してください。";
+            const statusEl = document.getElementById('upload-status');
+            if (statusEl) {
+                statusEl.innerHTML = "キャンセルしました。タップして新しく撮影してください。";
+            }
         }
 
         async function analyzeMultipleReceipts() {
@@ -526,7 +535,9 @@
             const currentApiKey = localStorage.getItem('gemini_api_key');
             const statusEl = document.getElementById('upload-status');
             
-            statusEl.innerHTML = `<span style='color:#ffb423;'>⏳ 現在計 ${selectedImagesBase64.length} 枚のレシートを合算解析中...</span>`;
+            if (statusEl) {
+                statusEl.innerHTML = `<span style='color:#ffb423;'>⏳ 現在計 ${selectedImagesBase64.length} 枚のレシートを合算解析中...</span>`;
+            }
 
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`;
@@ -562,18 +573,20 @@
                 replyText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(replyText);
 
-                document.getElementById('input-amount').value = result.amount || 0;
-                document.getElementById('input-shop').value = result.shop || "";
-                document.getElementById('input-memo').value = result.memo || "";
+                if (document.getElementById('input-amount')) document.getElementById('input-amount').value = result.amount || 0;
+                if (document.getElementById('input-shop')) document.getElementById('input-shop').value = result.shop || "";
+                if (document.getElementById('input-memo')) document.getElementById('input-memo').value = result.memo || "";
                 
                 if(result.payment) {
                     const paySelect = document.getElementById('input-payment');
-                    if(result.payment.includes('カード') || result.payment.includes('クレジット')) {
-                        paySelect.value = 'クレジットカード';
-                    } else if(result.payment.includes('券') || result.payment.includes('ギフト')) {
-                        paySelect.value = 'ギフトカード';
-                    } else {
-                        paySelect.value = '現金';
+                    if(paySelect) {
+                        if(result.payment.includes('カード') || result.payment.includes('クレジット')) {
+                            paySelect.value = 'クレジットカード';
+                        } else if(result.payment.includes('券') || result.payment.includes('ギフト')) {
+                            paySelect.value = 'ギフトカード';
+                        } else {
+                            paySelect.value = '現金';
+                        }
                     }
                 }
 
@@ -582,12 +595,16 @@
                     syncCheckbox.checked = true;
                 }
 
-                statusEl.innerHTML = `<span style='color:#4e8d7c;'>✅ 計 ${selectedImagesBase64.length} 枚の合算解析が完了しました！追加撮影も可能です。</span>`;
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style='color:#4e8d7c;'>✅ 計 ${selectedImagesBase64.length} 枚の合算解析が完了しました！追加撮影も可能です。</span>`;
+                }
                 countItems();
 
             } catch (error) {
                 console.error(error);
-                statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラー。もう一度やり直すか手動で入力してください。</span>";
+                if (statusEl) {
+                    statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラー。もう一度やり直すか手動で入力してください。</span>";
+                }
             }
         }
 
@@ -644,11 +661,13 @@
             selectedImagesBase64 = [];
             renderPreviews();
 
-            document.getElementById('input-shop').value = "";
-            document.getElementById('input-amount').value = "";
-            document.getElementById('input-memo').value = "";
-            document.getElementById('sync-stock').checked = false; 
-            document.getElementById('upload-status').innerHTML = "タップしてレシートを撮影・選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（長い場合は上から順に何パシャしてもOK！）</span>";
+            if (document.getElementById('input-shop')) document.getElementById('input-shop').value = "";
+            if (document.getElementById('input-amount')) document.getElementById('input-amount').value = "";
+            if (document.getElementById('input-memo')) document.getElementById('input-memo').value = "";
+            if (document.getElementById('sync-stock')) document.getElementById('sync-stock').checked = false; 
+            if (document.getElementById('upload-status')) {
+                document.getElementById('upload-status').innerHTML = "タップしてレシートを撮影・選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（長い場合は上から順に何パシャしてもOK！）</span>";
+            }
             countItems();
         }
 
@@ -679,6 +698,7 @@
 
         function renderHistory() {
             const list = document.getElementById('history-list');
+            if (!list) return;
             list.innerHTML = "";
             let total = 0;
 
@@ -706,7 +726,8 @@
                     </li>
                 `;
             });
-            document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
+            const totalEl = document.getElementById('total-amount');
+            if (totalEl) totalEl.innerText = `￥ ${total.toLocaleString()}`;
         }
 
         function editData(id) {
@@ -740,9 +761,9 @@
             }
         }
 
-        // 在庫管理（ストック一覧）の描画
         function renderStock() {
             const list = document.getElementById('stock-list');
+            if (!list) return;
             list.innerHTML = "";
 
             if(StockData.length === 0) {
@@ -756,7 +777,6 @@
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
                 const currentUnit = item.unit || '個';
                 
-                // 単位変更用インラインドロップダウンのHTMLを生成
                 let unitOptions = "";
                 units.forEach(u => {
                     unitOptions += `<option value="${u}" ${currentUnit === u ? 'selected' : ''}>${u}</option>`;
@@ -776,7 +796,6 @@
                         <div class="flex-cell">
                             <strong style="font-size:1.05rem;">${badge} ${item.name}</strong><br>
                             <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span><br>
-                            <!-- ストックの名称・誤字をいつでも修正できるボタンを新設 -->
                             <button class="btn-small" onclick="editStockName(${item.id})">✏️ 品名修正</button>
                         </div>
                         <div class="flex-cell text-right" style="width:175px;">
@@ -789,7 +808,6 @@
             });
         }
 
-        // 数量のプラスマイナス変更
         function changeQty(id, amount) {
             const item = StockData.find(p => p.id === id);
             if(!item) return;
@@ -805,23 +823,20 @@
             renderStock();
         }
 
-        // その場で単位（個・パック等）を切り替えて即時記憶する関数
         function changeStockUnit(id, newUnit) {
             const item = StockData.find(p => p.id === id);
             if(!item) return;
 
             item.unit = newUnit;
             localStorage.setItem('stock_data', JSON.stringify(StockData));
-            // 再描画せずに裏で静かに記憶（使い心地を滑らかにするため）
         }
 
-        // 在庫の名称を修正する関数
         function editStockName(id) {
             const item = StockData.find(p => p.id === id);
             if (!item) return;
 
             const newName = prompt("商品名・食材名を修正:", item.name);
-            if (newName === null) return; // キャンセルされた場合
+            if (newName === null) return;
             const trimmed = newName.trim();
             if (!trimmed) return alert("名前を空欄にはできません");
 
