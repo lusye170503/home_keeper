@@ -232,7 +232,7 @@
 
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
-                <label style="display:block; margin: 10px 0; font-size: 0.9rem;">
+                <label style="display:block; margin: 10px 0; font-size: 0.9rem; cursor: pointer;">
                     <input type="checkbox" id="sync-stock" style="width:auto; margin-right:8px;">同時におうちキーパー（在庫）に登録する
                 </label>
                 
@@ -255,7 +255,7 @@
         <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
-                <h2>🎁 在庫を直接追加（もらい物・今のストック）</h2>
+                <h2>🎁 ざいこを直接追加（もらい物・今のストック）</h2>
                 <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
                 
                 <div class="row-flex">
@@ -426,13 +426,11 @@
                     }
                 }
 
-                // チェックボックスの強制有効化を確実に実行
-                setTimeout(() => {
-                    const syncCheckbox = document.getElementById('sync-stock');
-                    if (syncCheckbox) {
-                        syncCheckbox.checked = true;
-                    }
-                }, 50);
+                // チェックボックスを確実に強制ONにする
+                const syncCheckbox = document.getElementById('sync-stock');
+                if (syncCheckbox) {
+                    syncCheckbox.checked = true;
+                }
 
                 statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 全明細の解析が完了しました！</span>";
 
@@ -452,7 +450,9 @@
             const memo = document.getElementById('input-memo').value || "未分類";
             const qty = parseFloat(document.getElementById('input-qty').value) || 1;
             const unit = document.getElementById('input-unit').value;
-            const syncStock = document.getElementById('sync-stock').checked;
+            
+            // ボタンが押されたその瞬間のチェックボックスの状態を確実に取得する
+            const isChecked = document.getElementById('sync-stock').checked;
 
             if(amount === 0) return alert("金額を入力してください");
 
@@ -470,14 +470,15 @@
             });
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
-            // おうちキーパー（在庫）への連動処理
-            if(syncStock) {
-                // 「・」「、」「,」「 」「\n」などあらゆる区切り文字に対応
+            // おうちキーパー（在庫）への連動処理（確実な判定に修正）
+            if(isChecked) {
+                // 「・」「、」「,」「 」「\n」などあらゆる区切り文字に対応して配列にする
                 const items = memo.split(/[・、, \n]+/);
                 let addedCount = 0;
 
                 items.forEach((itemName, index) => {
                     const trimmedName = itemName.trim();
+                    // 空文字やデフォルトのダミーテキストは除外
                     if(!trimmedName || trimmedName === "レシート購入品") return;
                     
                     StockData.push({ 
@@ -498,12 +499,13 @@
 
             alert("登録が完了しました！");
             
+            // 入力欄のリセット
             document.getElementById('input-shop').value = "";
             document.getElementById('input-unit-price').value = "";
             document.getElementById('input-qty').value = "1";
             document.getElementById('input-amount').value = "";
             document.getElementById('input-memo').value = "";
-            document.getElementById('sync-stock').checked = false;
+            document.getElementById('sync-stock').checked = false; // 登録後は一旦オフに戻す
             document.getElementById('upload-status').innerHTML = "タップしてれしーと画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（AIが全品目を漏らさず読み込みます）</span>";
         }
 
