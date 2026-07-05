@@ -92,6 +92,19 @@
             -webkit-appearance: none;
         }
 
+        /* 🛠️ チェックボックスの見た目とタップ反応を100%復活させる最強の設定 */
+        input[type="checkbox"] {
+            -webkit-appearance: checkbox !important;
+            appearance: checkbox !important;
+            width: 22px !important;
+            height: 22px !important;
+            padding: 0 !important;
+            margin: 0 10px 0 0 !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            cursor: pointer !important;
+        }
+
         .row-flex {
             display: flex;
             gap: 8px;
@@ -190,13 +203,13 @@
                 <h2>📸 レシート自動解析</h2>
                 <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
                     <span style="font-size: 2.5rem;">📁</span>
-                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてれしーと画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが全品目を漏らさず読み込みます）</span></p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてレシート画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが全品目を漏らさず読み込みます）</span></p>
                 </div>
                 <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="analyzeReceiptWithGemini(this);">
             </div>
 
             <div class="card">
-                <h2>✍️ 手入力 / 支出フォーム</h2>
+                <h2>✍️ 手入力 / 支出</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
                 
@@ -232,8 +245,10 @@
 
                 <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
-                <label style="display:block; margin: 10px 0; font-size: 0.9rem; cursor: pointer;">
-                    <input type="checkbox" id="sync-stock" style="width:auto; margin-right:8px;">同時におうちキーパー（在庫）に登録する
+                <!-- 文字の部分をタップしてもチェックボックスが連動するように設定 -->
+                <label style="display:flex; align-items:center; margin: 15px 0; font-size: 0.95rem; cursor: pointer; user-select:none;">
+                    <input type="checkbox" id="sync-stock">
+                    <span>同時におうちキーパー（在庫）に登録する</span>
                 </label>
                 
                 <button class="btn-main" onclick="addData();">この内容で登録</button>
@@ -304,7 +319,7 @@
     <!-- 下部タブナビゲーション -->
     <div class="nav-bar">
         <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</a>
-        <a href="#" class="nav-item" onclick="switchPage('carrot', this);"><span class="nav-icon">📊</span>かけいぼ</a>
+        <a href="#" class="nav-item" onclick="switchPage('carrot', this);"><span class="nav-icon">📊</span>家計簿</a>
         <a href="#" class="nav-item" onclick="switchPage('stock_tab', this);"><span class="nav-icon">🥕</span>おうちキーパー</a>
         <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">⚙️</span>設定/ラボ</a>
     </div>
@@ -405,278 +420,4 @@
                 const json = await response.json();
                 let replyText = json.candidates[0].content.parts[0].text;
                 
-                replyText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
-                const result = JSON.parse(replyText);
-
-                document.getElementById('input-amount').value = result.amount || 0;
-                document.getElementById('input-shop').value = result.shop || "";
-                document.getElementById('input-memo').value = result.memo || "";
-                document.getElementById('input-unit-price').value = "";
-                document.getElementById('input-qty').value = result.qty || 1;
-                document.getElementById('input-unit').value = "個";
-                
-                if(result.payment) {
-                    const paySelect = document.getElementById('input-payment');
-                    if(result.payment.includes('カード') || result.payment.includes('クレジット')) {
-                        paySelect.value = 'クレジットカード';
-                    } else if(result.payment.includes('券') || result.payment.includes('ギフト')) {
-                        paySelect.value = 'ギフトカード';
-                    } else {
-                        paySelect.value = '現金';
-                    }
-                }
-
-                // チェックボックスを確実に強制ONにする
-                const syncCheckbox = document.getElementById('sync-stock');
-                if (syncCheckbox) {
-                    syncCheckbox.checked = true;
-                }
-
-                statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 全明細の解析が完了しました！</span>";
-
-            } catch (error) {
-                console.error(error);
-                statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラー。手動で入力してください。</span>";
-            }
-        }
-
-        function addData() {
-            const date = document.getElementById('input-date').value;
-            const shop = document.getElementById('input-shop').value.trim() || "お店不明";
-            const amount = parseInt(document.getElementById('input-amount').value) || 0;
-            const unitPrice = parseInt(document.getElementById('input-unit-price').value) || 0;
-            const payment = document.getElementById('input-payment').value;
-            const category = document.getElementById('input-category').value;
-            const memo = document.getElementById('input-memo').value || "未分類";
-            const qty = parseFloat(document.getElementById('input-qty').value) || 1;
-            const unit = document.getElementById('input-unit').value;
-            
-            // ボタンが押されたその瞬間のチェックボックスの状態を確実に取得する
-            const isChecked = document.getElementById('sync-stock').checked;
-
-            if(amount === 0) return alert("金額を入力してください");
-
-            KakeiboData.push({ 
-                id: Date.now(), 
-                date, 
-                shop, 
-                amount, 
-                unitPrice,
-                payment, 
-                category, 
-                memo,
-                qty,
-                unit
-            });
-            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-
-            // おうちキーパー（在庫）への連動処理（確実な判定に修正）
-            if(isChecked) {
-                // 「・」「、」「,」「 」「\n」などあらゆる区切り文字に対応して配列にする
-                const items = memo.split(/[・、, \n]+/);
-                let addedCount = 0;
-
-                items.forEach((itemName, index) => {
-                    const trimmedName = itemName.trim();
-                    // 空文字やデフォルトのダミーテキストは除外
-                    if(!trimmedName || trimmedName === "レシート購入品") return;
-                    
-                    StockData.push({ 
-                        id: Date.now() + index, 
-                        name: trimmedName, 
-                        qty: 1, 
-                        unit: '個',
-                        date, 
-                        source: payment === 'もらい物' ? '直接追加' : '購入'
-                    });
-                    addedCount++;
-                });
-                
-                if (addedCount > 0) {
-                    localStorage.setItem('stock_data', JSON.stringify(StockData));
-                }
-            }
-
-            alert("登録が完了しました！");
-            
-            // 入力欄のリセット
-            document.getElementById('input-shop').value = "";
-            document.getElementById('input-unit-price').value = "";
-            document.getElementById('input-qty').value = "1";
-            document.getElementById('input-amount').value = "";
-            document.getElementById('input-memo').value = "";
-            document.getElementById('sync-stock').checked = false; // 登録後は一旦オフに戻す
-            document.getElementById('upload-status').innerHTML = "タップしてれしーと画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（AIが全品目を漏らさず読み込みます）</span>";
-        }
-
-        function addStockDirect() {
-            const name = document.getElementById('direct-stock-name').value;
-            const qty = parseFloat(document.getElementById('direct-stock-qty').value) || 1;
-            const unit = document.getElementById('direct-stock-unit').value;
-            
-            if(!name) return alert("品名を入力してください");
-
-            const today = new Date().toISOString().substring(0, 10);
-
-            StockData.push({ 
-                id: Date.now(), 
-                name: name, 
-                qty: qty,
-                unit: unit,
-                date: today,
-                source: '直接追加' 
-            });
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-
-            alert("おうちキーパーにストックしました！");
-            document.getElementById('direct-stock-name').value = "";
-            document.getElementById('direct-stock-qty').value = "1";
-            renderStock();
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = "";
-            let total = 0;
-
-            [...KakeiboData].reverse().forEach(item => {
-                total += item.amount;
-                
-                let payEmoji = "💸";
-                if(item.payment === "クレジットカード") payEmoji = "💳";
-                if(item.payment === "ギフトカード") payEmoji = "🎁";
-                if(item.payment === "もらい物") payEmoji = "💝";
-
-                const unitPriceDisplay = item.unitPrice ? `<span style="color:#aaa; font-size:0.8rem;">(単価:￥${item.unitPrice} × ${item.qty}${item.unit})</span>` : `(${item.qty}${item.unit})`;
-
-                list.innerHTML += `
-                    <li class="flex-item">
-                        <div class="flex-cell">
-                            <span style="font-size:0.8rem; color:var(--text-muted);">${item.date}</span> 
-                            <span style="color:#4e8d7c; font-size:0.85rem; font-weight:bold;">🛒 ${item.shop}</span>
-                            <span style="background-color:#3d3d3d; padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#ccc; margin-left:5px;">${payEmoji} ${item.payment || '現金'}</span><br>
-                            <strong style="font-size:1.05rem;">${item.memo}</strong> ${unitPriceDisplay} <span style="font-size:0.8rem; color:var(--text-muted);">[${item.category}]</span><br>
-                            <button class="btn-small" onclick="editData(${item.id})">✏️ 修正</button>
-                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteData(${item.id})">🗑️ 削除</button>
-                        </div>
-                        <div class="flex-cell text-right" style="font-weight:bold; color:var(--primary-color); font-size:1.1rem;">
-                            ￥${item.amount.toLocaleString()}
-                        </div>
-                    </li>
-                `;
-            });
-            document.getElementById('total-amount').innerText = `￥ ${total.toLocaleString()}`;
-        }
-
-        function editData(id) {
-            const item = KakeiboData.find(p => p.id === id);
-            if (!item) return;
-
-            const newShop = prompt("お店の名前を修正:", item.shop || "");
-            if (newShop === null) return;
-
-            const newMemo = prompt("品名・メモを修正:", item.memo);
-            if (newMemo === null) return;
-
-            const newAmountStr = prompt("合計金額を修正（半角数字）:", item.amount);
-            if (newAmountStr === null) return;
-            const newAmount = parseInt(newAmountStr) || 0;
-
-            item.shop = newShop;
-            item.memo = newMemo;
-            item.amount = newAmount;
-            localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-            
-            renderHistory();
-            alert("修正しました！");
-        }
-
-        function deleteData(id) {
-            if(confirm("この履歴を削除してもよろしいですか？")) {
-                KakeiboData = KakeiboData.filter(item => item.id !== id);
-                localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
-                renderHistory();
-            }
-        }
-
-        function renderStock() {
-            const list = document.getElementById('stock-list');
-            list.innerHTML = "";
-
-            if(StockData.length === 0) {
-                list.innerHTML = `<p style="color:var(--text-muted); text-align:center;">在庫はありません</p>`;
-                return;
-            }
-
-            [...StockData].reverse().forEach(item => {
-                const badge = item.source === '直接追加' ? '🎁' : '🛒';
-                const isCountable = (item.unit === '個' || item.unit === '本' || item.unit === 'パック' || item.unit === '袋');
-                
-                let qtyControl = '';
-                if(isCountable) {
-                    qtyControl = `
-                        <button class="btn-qty" onclick="changeQty(${item.id}, -1)">-</button>
-                        <span style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; min-width:30px; display:inline-block; text-align:center;">${item.qty}</span>
-                        <button class="btn-qty" onclick="changeQty(${item.id}, 1)">+</button>
-                        <span>${item.unit}</span>
-                    `;
-                } else {
-                    qtyControl = `<span style="color:var(--primary-color); font-weight:bold;">${item.qty}${item.unit}</span>`;
-                }
-                
-                list.innerHTML += `
-                    <li class="flex-item" id="stock-${item.id}">
-                        <div class="flex-cell">
-                            <strong style="font-size:1.05rem;">${badge} ${item.name}</strong><br>
-                            <span style="font-size:0.75rem; color:var(--text-muted);">登録日: ${item.date}</span>
-                        </div>
-                        <div class="flex-cell text-right" style="width:160px;">
-                            <div style="margin-bottom:5px;">${qtyControl}</div>
-                            <button class="btn-small" style="background-color:#4e8d7c;" onclick="consumeStock(${item.id})">🍽️ 全部消費</button>
-                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteStock(${item.id})">🗑️ 削除</button>
-                        </div>
-                    </li>
-                `;
-            });
-        }
-
-        function changeQty(id, amount) {
-            const item = StockData.find(p => p.id === id);
-            if(!item) return;
-
-            item.qty = (parseFloat(item.qty) || 0) + amount;
-            
-            if(item.qty <= 0) {
-                StockData = StockData.filter(p => p.id !== id);
-                alert(`「${item.name}」をすべて消費しました！`);
-            }
-            
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-            renderStock();
-        }
-
-        function consumeStock(id) {
-            StockData = StockData.filter(item => item.id !== id);
-            localStorage.setItem('stock_data', JSON.stringify(StockData));
-            renderStock();
-        }
-
-        function deleteStock(id) {
-            if(confirm("この在庫項目を削除してもよろしいですか？")) {
-                StockData = StockData.filter(item => item.id !== id);
-                localStorage.setItem('stock_data', JSON.stringify(StockData));
-                renderStock();
-            }
-        }
-
-        function copyStockForMenu() {
-            if(StockData.length === 0) return alert("在庫が空っぽです");
-            const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
-                         StockData.map(i => `- ${i.name}(${i.qty}${i.unit})`).join('\n');
-            navigator.clipboard.writeText(text).then(() => {
-                alert("冷蔵庫の在庫データをコピーしました！そのままGeminiに貼り付けてね。");
-            });
-        }
-    </script>
-</body>
-</html>
+                replyText = replyText.replace(/```json/g, '').replace(/
