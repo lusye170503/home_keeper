@@ -402,8 +402,9 @@
                 tagsEl.innerHTML = "";
                 CustomCategories.forEach(cat => {
                     const isDefault = DefaultCategories.includes(cat);
+                    // シングルクォーテーションのエスケープバグを修正
                     tagsEl.innerHTML += `
-                        <span onclick="${isDefault ? '' : `deleteCategory('${cat}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
+                        <span onclick="${isDefault ? '' : `deleteCategory('${cat.replace(/'/g, "\\'")}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
                             ${cat} ${isDefault ? '' : '×'}
                         </span>`;
                 });
