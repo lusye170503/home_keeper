@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ずぼらかけいぼ＆おうちキーパー</title>
     
+    <!-- iPhone用PWA（単独アプリ化）設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ずぼら家計簿">
+    <meta name="apple-mobile-web-app-title" content="ずぼらかけいぼ">
     
     <style>
-        /* 全体スタイリング（目に優しい、少し大人っぽいチェリー＆ダーク系の配色） */
         :root {
-            --primary-color: #b83b5e; /* チェリーレッドのアクセント */
+            --primary-color: #b83b5e;
             --bg-color: #1a1a1a;
             --card-bg: #2d2d2d;
             --text-color: #ffffff;
@@ -25,7 +25,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 0;
-            padding-bottom: 70px; /* ナビゲーションバーの余白 */
+            padding-bottom: 70px;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
@@ -92,7 +92,6 @@
             -webkit-appearance: none;
         }
 
-        /* 数量用の横並びレイアウト用 */
         .row-flex {
             display: flex;
             gap: 8px;
@@ -157,7 +156,7 @@
         }
         .text-right {
             text-align: right;
-            width: 100px;
+            width: 120px;
         }
         .btn-small {
             width: auto;
@@ -172,18 +171,19 @@
 </head>
 <body>
 
-    <header>ずぼら家計簿＆お家キーパー</header>
+    <header>ずぼらかけいぼ＆おうちキーパー</header>
 
     <div class="container">
         
+        <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
                 <h2>📸 レシート自動解析（最強の武器）</h2>
                 <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
                     <span style="font-size: 2.5rem;">📁</span>
-                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;">タップしてレシート画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが自動で読み取ります）</span></p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてレシート画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（本物のAIが自動で読み取ります）</span></p>
                 </div>
-                <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="simulateAIRead(this);">
+                <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="analyzeReceiptWithGemini(this);">
             </div>
 
             <div class="card">
@@ -217,6 +217,7 @@
             </div>
         </div>
 
+        <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
                 <h2>📊 今月の収支サマリー</h2>
@@ -224,11 +225,11 @@
             </div>
             <div class="card">
                 <h2>📜 履歴一覧</h2>
-                <ul class="flex-list" id="history-list">
-                    </ul>
+                <ul class="flex-list" id="history-list"></ul>
             </div>
         </div>
 
+        <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
                 <h2>🎁 在庫を直接追加（いただき物・現在のストック用）</h2>
@@ -250,15 +251,23 @@
 
             <div class="card">
                 <h2>🥕 現在のストック一覧</h2>
-                <ul class="flex-list" id="stock-list">
-                    </ul>
+                <ul class="flex-list" id="stock-list"></ul>
                 <button style="margin-top:15px; background-color:#444; border:none;" onclick="copyStockForMenu();">📋 献立相談用に出力をコピー</button>
             </div>
         </div>
 
+        <!-- 4. 設定・ラボ画面 -->
         <div id="page-analysis" class="page">
+            <!-- 🌟 安全のためのAPIキー設定エリアをここに新設 -->
+            <div class="card" style="border: 1px solid var(--primary-color);">
+                <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">あっきーさんのGemini APIキーを入力してください。スマホ内だけに安全に保存されます（GitHubには公開されません）。</p>
+                <input type="password" id="settings-api-key" placeholder="AQ.Ab8... で始まるキーを貼り付け" onchange="saveApiKey();">
+                <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0; display:none;" id="key-status">✅ スマホに鍵を安全に記憶しました！</p>
+            </div>
+
             <div class="card">
-                <h2>🔮 消費頻度ランキング（魔改造）</h2>
+                <h2>🔮 消費頻度ランキング</h2>
                 <p style="font-size:0.85rem; color:var(--text-muted);">購入・消費スピードが早い食材の分析ログです。</p>
                 <ul class="flex-list" id="analysis-list">
                     <li class="flex-item"><div class="flex-cell">1. 豚肉（平均3日で消費）</div><div class="flex-cell text-right" style="color:var(--primary-color);">高頻度</div></li>
@@ -270,16 +279,26 @@
 
     </div>
 
+    <!-- 下部タブナビゲーション -->
     <div class="nav-bar">
         <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</a>
         <a href="#" class="nav-item" onclick="switchPage('history', this);"><span class="nav-icon">📊</span>家計簿</a>
         <a href="#" class="nav-item" onclick="switchPage('stock', this);"><span class="nav-icon">🥕</span>在庫</a>
-        <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">🔮</span>ラボ</a>
+        <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">⚙️</span>設定/ラボ</a>
     </div>
 
     <script>
         let KakeiboData = JSON.parse(localStorage.getItem('kakeibo_data')) || [];
         let StockData = JSON.parse(localStorage.getItem('stock_data')) || [];
+
+        // 最初からスマホに保存されているキーがあれば読み込む
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if(savedKey) {
+                document.getElementById('settings-api-key').value = savedKey;
+                document.getElementById('key-status').style.display = 'block';
+            }
+        });
 
         document.getElementById('input-date').value = new Date().toISOString().substring(0, 10);
 
@@ -294,15 +313,75 @@
             if(pageId === 'stock') renderStock();
         }
 
-        function simulateAIRead(input) {
-            if (input.files && input.files[0]) {
-                alert("AIがレシートを解析中...");
-                document.getElementById('input-amount').value = 1280;
-                document.getElementById('input-category').value = "食費";
-                document.getElementById('input-memo').value = "豚肉・キャベツ（レシート自動解析）";
-                document.getElementById('input-qty').value = 300;
-                document.getElementById('input-unit').value = "g";
+        // 🌟 鍵をスマホ（ブラウザ）に保存する関数
+        function saveApiKey() {
+            const key = document.getElementById('settings-api-key').value.trim();
+            if(key) {
+                localStorage.setItem('gemini_api_key', key);
+                document.getElementById('key-status').style.display = 'block';
+            } else {
+                localStorage.removeItem('gemini_api_key');
+                document.getElementById('key-status').style.display = 'none';
+            }
+        }
+
+        async function analyzeReceiptWithGemini(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            // 🌟 スマホから直接鍵を取り出す
+            const currentApiKey = localStorage.getItem('gemini_api_key');
+            if(!currentApiKey) {
+                alert("右下の「⚙️設定/ラボ」タブから、あっきーさんのAPIキーを先に登録してください！");
+                return;
+            }
+
+            const file = input.files[0];
+            const statusEl = document.getElementById('upload-status');
+            statusEl.innerHTML = "<span style='color:#ffb423;'>⏳ 本物のAIがレシートをガチ解析中...<br>（10秒ほどお待ちください）</span>";
+
+            try {
+                const base64Data = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(file);
+                });
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`;
+                
+                const promptText = "このレシート画像から「合計金額（税込）」「主な購入品名または食材（複数ある場合は、豚肉・キャベツ のように・で繋ぐ）」「その中で一番メインとなる食材の数量（数字のみ、無ければ空欄）」「その数量の単位（g、個、本、パック、袋 から選択、無ければ個）」を抜き出し、以下のJSON形式だけで返してください。余計な解説は一切不要です。\n\n{\"amount\": 合計金額の数字, \"memo\": \"品名文字列\", \"qty\": \"数量数字または空欄\", \"unit\": \"単位\"}";
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inlineData: { mimeType: file.type, data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
+
+                const json = await response.json();
+                let replyText = json.candidates[0].content.parts[0].text;
+                
+                replyText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const result = JSON.parse(replyText);
+
+                document.getElementById('input-amount').value = result.amount || 0;
+                document.getElementById('input-memo').value = result.memo || "レシート購入品";
+                if(result.qty) document.getElementById('input-qty').value = result.qty;
+                if(result.unit) document.getElementById('input-unit').value = result.unit;
                 document.getElementById('sync-stock').checked = true;
+
+                statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 解析が完了しました！内容を確認して登録ボタンを押してね。</span>";
+                alert("AIの解析が完了しました！金額や品名が自動入力されたので確認してください。");
+
+            } catch (error) {
+                console.error(error);
+                statusEl.innerHTML = "<span style='color:#b83b5e;'>❌ 解析エラーが発生しました。手動で入力してください。</span>";
+                alert("AI解析でエラーが起きました。もう一度試すか、手入力をお願いします。");
             }
         }
 
@@ -317,20 +396,24 @@
 
             if(amount === 0) return alert("金額を入力してください");
 
-            // 数量がある場合はメモの後ろにくっつけて家計簿履歴に残す
             const displayMemo = qty ? `${memo} (${qty}${unit})` : memo;
 
             KakeiboData.push({ id: Date.now(), date, amount, category, memo: displayMemo });
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
             if(syncStock) {
-                StockData.push({ 
-                    id: Date.now(), 
-                    name: memo.split('（')[0], 
-                    qty: qty || '',
-                    unit: qty ? unit : '',
-                    date, 
-                    source: '購入' 
+                const items = memo.split(/[・、,]/);
+                items.forEach((itemName, index) => {
+                    const trimmedName = itemName.trim();
+                    if(!trimmedName) return;
+                    StockData.push({ 
+                        id: Date.now() + index, 
+                        name: trimmedName, 
+                        qty: index === 0 ? (qty || '') : '', 
+                        unit: index === 0 ? (qty ? unit : '') : '',
+                        date, 
+                        source: '購入' 
+                    });
                 });
                 localStorage.setItem('stock_data', JSON.stringify(StockData));
             }
@@ -341,6 +424,7 @@
             document.getElementById('input-memo').value = "";
             document.getElementById('input-qty').value = "";
             document.getElementById('sync-stock').checked = false;
+            document.getElementById('upload-status').innerHTML = "タップしてレシート画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（本物のAIが自動で読み取ります）</span>";
         }
 
         function addStockDirect() {
@@ -430,7 +514,6 @@
 
             [...StockData].reverse().forEach(item => {
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
-                // 数量が入力されている場合は「(300g)」などの表示をくっつける
                 const qtyDisplay = item.qty ? ` <span style="color:var(--primary-color); font-weight:bold;">(${item.qty}${item.unit})</span>` : '';
                 
                 list.innerHTML += `
@@ -441,6 +524,7 @@
                         </div>
                         <div class="flex-cell text-right">
                             <button class="btn-small" onclick="consumeStock(${item.id})">🍽️ 消費</button>
+                            <button class="btn-small" style="background-color:#8b0000;" onclick="deleteStock(${item.id})">🗑️ 削除</button>
                         </div>
                     </li>
                 `;
@@ -453,9 +537,16 @@
             renderStock();
         }
 
+        function deleteStock(id) {
+            if(confirm("この在庫項目を削除してもよろしいですか？")) {
+                StockData = StockData.filter(item => item.id !== id);
+                localStorage.setItem('stock_data', JSON.stringify(StockData));
+                renderStock();
+            }
+        }
+
         function copyStockForMenu() {
             if(StockData.length === 0) return alert("在庫が空っぽです");
-            // 献立をGeminiに聞くときも、数量付きで綺麗にコピーされるように調整
             const text = "現在の冷蔵庫の在庫です。これで作れるおすすめの献立を3つ提案して：\n" + 
                          StockData.map(i => `- ${i.name}${i.qty ? `(${i.qty}${i.unit})` : ''}`).join('\n');
             navigator.clipboard.writeText(text).then(() => {
