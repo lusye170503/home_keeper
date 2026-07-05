@@ -17,6 +17,7 @@
             --card-bg: #2d2d2d;
             --text-color: #ffffff;
             --text-muted: #aaaaaa;
+            --safe-color: #4e8d7c;
         }
 
         body {
@@ -223,6 +224,23 @@
             border: 1px solid #555 !important;
             height: auto !important;
         }
+
+        .summary-box {
+            background-color: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #3d3d3d;
+        }
+        .summary-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -277,12 +295,27 @@
 
         <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
-            <div class="card">
-                <h2>📊 今月の合計支出</h2>
-                <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0;" id="total-amount">0 円</div>
+            <div class="card" style="border: 1px solid #444;">
+                <h2 id="summary-period-title">📊 今月のサマリー</h2>
+                
+                <div class="summary-box">
+                    <div class="summary-title">📉 今月の総支出 / 目標予算</div>
+                    <div class="summary-value" id="total-amount">￥0 / ￥0</div>
+                </div>
+
+                <div class="summary-box" id="remaining-budget-box" style="border-left: 5px solid var(--safe-color);">
+                    <div class="summary-title" id="remaining-budget-title">⚖️ 今月の残り予算</div>
+                    <div class="summary-value" id="remaining-budget-value">￥0</div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-muted);">📁 費目別の支出一覧</h3>
+                    <div id="category-summary-list" style="font-size: 0.9rem; line-height: 1.6;"></div>
+                </div>
             </div>
+
             <div class="card">
-                <h2>📜 履歴一覧</h2>
+                <h2>📜 期間内の履歴一覧</h2>
                 <ul class="flex-list" id="history-list"></ul>
             </div>
         </div>
@@ -318,6 +351,22 @@
 
         <!-- 4. 設定・ラボ画面 -->
         <div id="page-analysis" class="page">
+            <div class="card" style="border: 1px solid #4e8d7c;">
+                <h2>📆 給料日（締め日）＆ 目標予算の設定</h2>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">給料日をもとに、自動で1ヶ月の期間を計算して締め処理を行います。</p>
+                <div class="row-flex">
+                    <div style="flex:1;">
+                        <span style="font-size:0.8rem; color:var(--text-muted);">毎月の給料日(日)</span>
+                        <input type="number" id="settings-salary-day" placeholder="例: 25" min="1" max="31" onchange="saveBudgetSettings();">
+                    </div>
+                    <div style="flex:1.5;">
+                        <span style="font-size:0.8rem; color:var(--text-muted);">毎月の目標予算(円)</span>
+                        <input type="number" id="settings-monthly-budget" placeholder="例: 150000" inputmode="numeric" onchange="saveBudgetSettings();">
+                    </div>
+                </div>
+                <p style="font-size:0.75rem; color:#4e8d7c; margin: 5px 0 0 0;" id="budget-status">※変更すると家計簿サマリーに即時反映されます。</p>
+            </div>
+
             <div class="card" style="border: 1px solid var(--primary-color);">
                 <h2>🔑 AIの鍵設定（セキュリティ対策版）</h2>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 5px;">Gemini APIキーを入力してください。スマホ内だけに安全に保存されます。</p>
@@ -373,6 +422,11 @@
                 document.getElementById('settings-api-key').value = savedKey;
                 document.getElementById('key-status').style.display = 'block';
             }
+            
+            // 予算と締め日の初期値
+            document.getElementById('settings-salary-day').value = localStorage.getItem('budget_salary_day') || "25";
+            document.getElementById('settings-monthly-budget').value = localStorage.getItem('budget_monthly_amount') || "150000";
+
             updateCategoryDropdownAndTags();
         });
 
@@ -431,10 +485,37 @@
 
         function deleteCategory(name) {
             if (confirm(`費目「${name}」を削除してもよろしいですか？`)) {
-                CustomCategories = CustomCategories.filter(c => c !== name);
+                CustomCategories = CustomCategories.filter(c !== name);
                 localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
                 updateCategoryDropdownAndTags();
             }
+        }
+
+        function saveBudgetSettings() {
+            const day = document.getElementById('settings-salary-day').value.trim();
+            const amount = document.getElementById('settings-monthly-budget').value.trim();
+            
+            localStorage.setItem('budget_salary_day', day || "25");
+            localStorage.setItem('budget_monthly_amount', amount || "150000");
+        }
+
+        // 給料日から現在の締め期間（開始日と終了日）を計算する関数
+        function getCurrentPeriod(salaryDay) {
+            const today = new Date();
+            let startYear = today.getFullYear();
+            let startMonth = today.getMonth(); // 0 = 1月, 11 = 12月
+            
+            // もし今日の日付が給料日より前なら、開始月は「先月」になる
+            if (today.getDate() < salaryDay) {
+                startMonth -= 1;
+            }
+            
+            const startDate = new Date(startYear, startMonth, salaryDay);
+            
+            // 終了日は「次の給料日の前日」
+            const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, salaryDay - 1);
+            
+            return { start: startDate, end: endDate };
         }
 
         function switchPage(pageId, element) {
@@ -700,11 +781,74 @@
             const list = document.getElementById('history-list');
             if (!list) return;
             list.innerHTML = "";
-            let total = 0;
 
-            [...KakeiboData].reverse().forEach(item => {
+            // 設定の取得
+            const salaryDay = parseInt(localStorage.getItem('budget_salary_day')) || 25;
+            const monthlyBudget = parseInt(localStorage.getItem('budget_monthly_amount')) || 150000;
+
+            // 期間の計算
+            const period = getCurrentPeriod(salaryDay);
+            const startStr = `${period.start.getMonth() + 1}/${period.start.getDate()}`;
+            const endStr = `${period.end.getMonth() + 1}/${period.end.getDate()}`;
+            
+            document.getElementById('summary-period-title').innerText = `📊 今月のサマリー (${startStr} ～ ${endStr})`;
+
+            let total = 0;
+            let catTotals = {};
+
+            // 期間内データのみを抽出し、並び替え
+            const filteredData = KakeiboData.filter(item => {
+                const itemDate = new Date(item.date);
+                // 時間をリセットして日付のみで比較
+                itemDate.setHours(0,0,0,0);
+                const pStart = new Date(period.start).setHours(0,0,0,0);
+                const pEnd = new Date(period.end).setHours(0,0,0,0);
+                return itemDate >= pStart && itemDate <= pEnd;
+            });
+
+            filteredData.forEach(item => {
                 total += item.amount;
-                
+                catTotals[item.category] = (catTotals[item.category] || 0) + item.amount;
+            });
+
+            // サマリーエリアの描画
+            document.getElementById('total-amount').innerText = `￥${total.toLocaleString()} / ￥${monthlyBudget.toLocaleString()}`;
+            
+            const remaining = monthlyBudget - total;
+            const remainingBox = document.getElementById('remaining-budget-box');
+            const remainingTitle = document.getElementById('remaining-budget-title');
+            const remainingValue = document.getElementById('remaining-budget-value');
+
+            if (remaining >= 0) {
+                remainingTitle.innerText = "⚖️ 今月の残り予算（セーフ！）";
+                remainingValue.innerText = `￥${remaining.toLocaleString()}`;
+                remainingValue.style.color = "var(--safe-color)";
+                remainingBox.style.borderLeft = "5px solid var(--safe-color)";
+            } else {
+                remainingTitle.innerText = "⚠️ 予算オーバー（戒めモード！）";
+                remainingValue.innerText = `- ￥${Math.abs(remaining).toLocaleString()}`;
+                remainingValue.style.color = "var(--primary-color)";
+                remainingBox.style.borderLeft = "5px solid var(--primary-color)";
+            }
+
+            // 費目別リストの表示
+            const catSummaryList = document.getElementById('category-summary-list');
+            catSummaryList.innerHTML = "";
+            if (Object.keys(catTotals).length === 0) {
+                catSummaryList.innerHTML = "<span style='color:var(--text-muted);'>期間内の支出はまだありません。</span>";
+            } else {
+                for (const [cat, amt] of Object.entries(catTotals)) {
+                    catSummaryList.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>📁 ${cat}</span><strong style="color:#fff;">￥${amt.toLocaleString()}</strong></div>`;
+                }
+            }
+
+            // 履歴一覧の描画（期間内のみを新しい順で）
+            if (filteredData.length === 0) {
+                list.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:15px;">この期間の履歴はありません</p>`;
+                return;
+            }
+
+            [...filteredData].reverse().forEach(item => {
                 let payEmoji = "💸";
                 if(item.payment === "クレジットカード") payEmoji = "💳";
                 if(item.payment === "ギフトカード") payEmoji = "🎁";
@@ -726,8 +870,6 @@
                     </li>
                 `;
             });
-            const totalEl = document.getElementById('total-amount');
-            if (totalEl) totalEl.innerText = `￥ ${total.toLocaleString()}`;
         }
 
         function editData(id) {
