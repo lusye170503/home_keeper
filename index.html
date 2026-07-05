@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ずぼらかけいぼ＆おうちキーパー</title>
     
-    <!-- iPhone用PWA設定（ホーム画面のアイコン名も変更） -->
+    <!-- iPhone用PWA設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ずぼらかけいぼ">
@@ -187,16 +187,16 @@
         <!-- 1. 入力画面 -->
         <div id="page-input" class="page active">
             <div class="card">
-                <h2>📸 れしーと自動解析</h2>
+                <h2>📸 レシート自動解析</h2>
                 <div class="upload-zone" onclick="document.getElementById('receipt-file').click();">
                     <span style="font-size: 2.5rem;">📁</span>
-                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてれしーと画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが商品の単価や個数も分解します）</span></p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;" id="upload-status">タップしてれしーと画像を選択<br><span style="color:var(--text-muted); font-size:0.8rem;">（AIが全品目を漏らさず読み込みます）</span></p>
                 </div>
                 <input type="file" id="receipt-file" accept="image/*" style="display: none;" onchange="analyzeReceiptWithGemini(this);">
             </div>
 
             <div class="card">
-                <h2>✍️ 手入力 / ししゅつふぉーむ</h2>
+                <h2>✍️ 手入力 / 支出フォーム</h2>
                 <input type="date" id="input-date">
                 <input type="text" id="input-shop" placeholder="お店の名前（例：サミット、イオン）">
                 
@@ -216,11 +216,11 @@
                     </select>
                 </div>
 
-                <input type="text" id="input-memo" placeholder="品名・メインの食材（例：卵、豚肉）">
+                <input type="text" id="input-memo" placeholder="品名・食材（例：卵・牛乳・豚肉）">
                 
                 <div class="row-flex">
-                    <input type="number" id="input-unit-price" placeholder="単価（1個あたりの円）" inputmode="numeric" oninput="calculateTotal();">
-                    <input type="number" id="input-qty" placeholder="数量・個数" inputmode="numeric" value="1" oninput="calculateTotal();">
+                    <input type="number" id="input-unit-price" placeholder="単価（空欄でもOK）" inputmode="numeric" oninput="calculateTotal();">
+                    <input type="number" id="input-qty" placeholder="数量" inputmode="numeric" value="1" oninput="calculateTotal();">
                     <select id="input-unit">
                         <option value="個">個</option>
                         <option value="g">g</option>
@@ -230,7 +230,7 @@
                     </select>
                 </div>
 
-                <input type="number" id="input-amount" placeholder="合計金額（自動計算または総額入力）" inputmode="numeric">
+                <input type="number" id="input-amount" placeholder="合計金額（総額）" inputmode="numeric">
                 
                 <label style="display:block; margin: 10px 0; font-size: 0.9rem;">
                     <input type="checkbox" id="sync-stock" style="width:auto; margin-right:8px;">同時におうちキーパー（在庫）に登録する
@@ -243,11 +243,11 @@
         <!-- 2. 家計簿・履歴画面 -->
         <div id="page-history" class="page">
             <div class="card">
-                <h2>📊 今月の合計ししゅつ</h2>
+                <h2>📊 今月の合計支出</h2>
                 <div style="font-size: 1.5rem; font-weight: bold; margin: 10px 0;" id="total-amount">0 円</div>
             </div>
             <div class="card">
-                <h2>📜 りれき一覧</h2>
+                <h2>📜 履歴一覧</h2>
                 <ul class="flex-list" id="history-list"></ul>
             </div>
         </div>
@@ -255,7 +255,7 @@
         <!-- 3. 在庫管理画面 -->
         <div id="page-stock" class="page">
             <div class="card" style="background-color: #242424; border: 1px solid #444;">
-                <h2>🎁 ざいこを直接追加（もらい物・今のストック）</h2>
+                <h2>🎁 在庫を直接追加（もらい物・今のストック）</h2>
                 <input type="text" id="direct-stock-name" placeholder="食材・品名（例：お持たせのメロン、卵）">
                 
                 <div class="row-flex">
@@ -303,10 +303,10 @@
 
     <!-- 下部タブナビゲーション -->
     <div class="nav-bar">
-        <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>にゅうりょく</a>
-        <a href="#" class="nav-item" onclick="switchPage('carrot', this);"><span class="nav-icon">📊</span>かけいぼ</a>
+        <a href="#" class="nav-item active" onclick="switchPage('input', this);"><span class="nav-icon">📸</span>入力</a>
+        <a href="#" class="nav-item" onclick="switchPage('carrot', this);"><span class="nav-icon">📊</span>家計簿</a>
         <a href="#" class="nav-item" onclick="switchPage('stock_tab', this);"><span class="nav-icon">🥕</span>おうちキーパー</a>
-        <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">⚙️</span>せってい/らぼ</a>
+        <a href="#" class="nav-item" onclick="switchPage('analysis', this);"><span class="nav-icon">⚙️</span>設定/ラボ</a>
     </div>
 
     <script>
@@ -362,13 +362,13 @@
             
             const currentApiKey = localStorage.getItem('gemini_api_key');
             if(!currentApiKey) {
-                alert("右下の「⚙️せってい/らぼ」タブから、あっきーさんのAPIキーを先に登録してください！");
+                alert("右下の「⚙️設定/ラボ」タブから、あっきーさんのAPIキーを先に登録してください！");
                 return;
             }
 
             const file = input.files[0];
             const statusEl = document.getElementById('upload-status');
-            statusEl.innerHTML = "<span style='color:#ffb423;'>⏳ 細かくガチ解析中...<br>（少々お待ちください）</span>";
+            statusEl.innerHTML = "<span style='color:#ffb423;'>⏳ 全明細を漏らさず解析中...<br>（少々お待ちください）</span>";
 
             try {
                 const base64Data = await new Promise((resolve) => {
@@ -379,15 +379,15 @@
 
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${currentApiKey}`;
                 
-                const promptText = "このレシート画像から以下の情報を抜き出し、指定のJSON形式だけで返してください。余計な解説は一切不要です。\n" +
-                                   "1. amount: 合計金額（レシート全体の税込支払総額。数字のみ）\n" +
-                                   "2. shop: 店舗名（レシート最上部のお店の名前。無ければ空欄）\n" +
-                                   "3. payment: 支払い方法（『現金』『クレジットカード』『ギフトカード』など判別できればその文字列）\n" +
-                                   "4. memo: 最もメインとなる購入品名または食材（例：卵、牛乳、豚肉 などシンプルに1つか2つ。複数なら・で繋ぐ）\n" +
-                                   "5. unit_price: そのメイン食材の「1個（1パック）あたりの単価」。分からなければ、合計金額を数量で割った概算か、空欄でも可。\n" +
-                                   "6. qty: そのメイン食材の購入数量・個数（数字のみ。1点なら 1、10個入り卵なら 10。グラム数の場合は数字のみ抽出。無ければ 1 ）\n" +
-                                   "7. unit: その数量の単位（個、g、本、パック、袋 から選択）\n\n" +
-                                   "JSON形式:\n{\"amount\": 数字, \"shop\": \"文字列\", \"payment\": \"文字列\", \"memo\": \"文字列\", \"unit_price\": 数字または空欄, \"qty\": 数字, \"unit\": \"文字列\"}";
+                const promptText = "このレシート画像からすべての購入情報を精密に抜き出し、指定のJSON形式だけで返してください。解説は一切不要です。\n" +
+                                   "1. amount: レシートの最後にある最終的な「支払総額（税込）」を正確に数字のみで抽出してください。\n" +
+                                   "2. shop: 店舗名。無ければ空欄。\n" +
+                                   "3. payment: 支払い方法（『現金』『クレジットカード』など）\n" +
+                                   "4. memo: レシートに記載されている【すべての購入商品名・食材名】を、省略せずにすべて「・」で繋いだ1つの文字列にしてください（例：卵・牛乳・豚コマ肉・キャベツ）。個別の金額や値引きの文字は除外して品名だけにしてください。\n" +
+                                   "5. unit_price: 空欄(null)にしてください。\n" +
+                                   "6. qty: 購入した品目の総数、または 1 にしてください。\n" +
+                                   "7. unit: 「個」にしてください。\n\n" +
+                                   "JSON形式:\n{\"amount\": 数字, \"shop\": \"文字列\", \"payment\": \"文字列\", \"memo\": \"文字列\", \"unit_price\": null, \"qty\": 1, \"unit\": \"個\"}";
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -410,10 +410,10 @@
 
                 document.getElementById('input-amount').value = result.amount || 0;
                 document.getElementById('input-shop').value = result.shop || "";
-                document.getElementById('input-memo').value = result.memo || "レシート購入品";
-                document.getElementById('input-unit-price').value = result.unit_price || "";
+                document.getElementById('input-memo').value = result.memo || "";
+                document.getElementById('input-unit-price').value = "";
                 document.getElementById('input-qty').value = result.qty || 1;
-                if(result.unit) document.getElementById('input-unit').value = result.unit;
+                document.getElementById('input-unit').value = "個";
                 
                 if(result.payment) {
                     const paySelect = document.getElementById('input-payment');
@@ -426,8 +426,15 @@
                     }
                 }
 
-                document.getElementById('sync-stock').checked = true;
-                statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 解析完了しました！</span>";
+                // チェックボックスの強制有効化を確実に実行
+                setTimeout(() => {
+                    const syncCheckbox = document.getElementById('sync-stock');
+                    if (syncCheckbox) {
+                        syncCheckbox.checked = true;
+                    }
+                }, 50);
+
+                statusEl.innerHTML = "<span style='color:#4e8d7c;'>✅ 全明細の解析が完了しました！</span>";
 
             } catch (error) {
                 console.error(error);
@@ -463,24 +470,30 @@
             });
             localStorage.setItem('kakeibo_data', JSON.stringify(KakeiboData));
 
+            // おうちキーパー（在庫）への連動処理
             if(syncStock) {
-                const items = memo.split(/[・、,]/);
+                // 「・」「、」「,」「 」「\n」などあらゆる区切り文字に対応
+                const items = memo.split(/[・、, \n]+/);
+                let addedCount = 0;
+
                 items.forEach((itemName, index) => {
                     const trimmedName = itemName.trim();
-                    if(!trimmedName) return;
-                    
-                    const finalQty = index === 0 ? qty : 1;
+                    if(!trimmedName || trimmedName === "レシート購入品") return;
                     
                     StockData.push({ 
                         id: Date.now() + index, 
                         name: trimmedName, 
-                        qty: finalQty, 
-                        unit: index === 0 ? unit : '個',
+                        qty: 1, 
+                        unit: '個',
                         date, 
                         source: payment === 'もらい物' ? '直接追加' : '購入'
                     });
+                    addedCount++;
                 });
-                localStorage.setItem('stock_data', JSON.stringify(StockData));
+                
+                if (addedCount > 0) {
+                    localStorage.setItem('stock_data', JSON.stringify(StockData));
+                }
             }
 
             alert("登録が完了しました！");
@@ -491,7 +504,7 @@
             document.getElementById('input-amount').value = "";
             document.getElementById('input-memo').value = "";
             document.getElementById('sync-stock').checked = false;
-            document.getElementById('upload-status').innerHTML = "タップしてれしーと画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（AIが商品の単価や個数も分解します）</span>";
+            document.getElementById('upload-status').innerHTML = "タップしてれしーと画像を選択<br><span style='color:var(--text-muted); font-size:0.8rem;'>（AIが全品目を漏らさず読み込みます）</span>";
         }
 
         function addStockDirect() {
