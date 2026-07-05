@@ -313,7 +313,6 @@
                     <div id="category-summary-list" style="font-size: 0.9rem; line-height: 1.6;"></div>
                 </div>
 
-                <!-- サマリー出力用ボタンを追加 -->
                 <button style="margin-top:15px; background-color:#4e8d7c; border:none; font-size:0.9rem; padding:10px;" onclick="copySummaryToClipboard();">📋 今月のサマリーをコピーする</button>
             </div>
 
@@ -426,7 +425,6 @@
                 document.getElementById('key-status').style.display = 'block';
             }
             
-            // 予算と締め日の初期値
             document.getElementById('settings-salary-day').value = localStorage.getItem('budget_salary_day') || "25";
             document.getElementById('settings-monthly-budget').value = localStorage.getItem('budget_monthly_amount') || "150000";
 
@@ -464,10 +462,27 @@
                 tagsEl.innerHTML = "";
                 CustomCategories.forEach(cat => {
                     const isDefault = DefaultCategories.includes(cat);
-                    tagsEl.innerHTML += `
-                        <span onclick="${isDefault ? '' : `deleteCategory('${cat.replace(/'/g, "\\'")}')`}" style="background-color:${isDefault ? '#444' : '#b83b5e'}; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; cursor:pointer; user-select:none;">
-                            ${cat} ${isDefault ? '' : '×'}
-                        </span>`;
+                    if (isDefault) {
+                        tagsEl.innerHTML += `
+                            <span style="background-color:#444; color:#fff; padding:6px 12px; border-radius:20px; font-size:0.8rem; user-select:none;">
+                                ${cat}
+                            </span>`;
+                    } else {
+                        // 文字列のエスケープ処理を安全に行うために、個別に要素を生成してイベントを付与する形に修正
+                        const span = document.createElement('span');
+                        span.style.backgroundColor = '#b83b5e';
+                        span.style.color = '#fff';
+                        span.style.padding = '6px 12px';
+                        span.style.borderRadius = '20px';
+                        span.style.fontSize = '0.8rem';
+                        span.style.cursor = 'pointer';
+                        span.style.userSelect = 'none';
+                        span.innerText = `${cat} ×`;
+                        span.addEventListener('click', () => {
+                            deleteCategory(cat);
+                        });
+                        tagsEl.appendChild(span);
+                    }
                 });
             }
         }
@@ -502,20 +517,16 @@
             localStorage.setItem('budget_monthly_amount', amount || "150000");
         }
 
-        // 給料日から現在の締め期間（開始日と終了日）を計算する関数
         function getCurrentPeriod(salaryDay) {
             const today = new Date();
             let startYear = today.getFullYear();
-            let startMonth = today.getMonth(); // 0 = 1月, 11 = 12月
+            let startMonth = today.getMonth();
             
-            // もし今日の日付が給料日より前なら、開始月は「先月」になる
             if (today.getDate() < salaryDay) {
                 startMonth -= 1;
             }
             
             const startDate = new Date(startYear, startMonth, salaryDay);
-            
-            // 終了日は「次の給料日の前日」
             const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, salaryDay - 1);
             
             return { start: startDate, end: endDate };
@@ -780,7 +791,6 @@
             renderStock();
         }
 
-        // コピー用のテキストを生成するための共通変数
         let currentPeriodTextForCopy = "";
 
         function renderHistory() {
@@ -788,11 +798,9 @@
             if (!list) return;
             list.innerHTML = "";
 
-            // 設定の取得
             const salaryDay = parseInt(localStorage.getItem('budget_salary_day')) || 25;
             const monthlyBudget = parseInt(localStorage.getItem('budget_monthly_amount')) || 150000;
 
-            // 期間の計算
             const period = getCurrentPeriod(salaryDay);
             const startStr = `${period.start.getMonth() + 1}/${period.start.getDate()}`;
             const endStr = `${period.end.getMonth() + 1}/${period.end.getDate()}`;
@@ -802,7 +810,6 @@
             let total = 0;
             let catTotals = {};
 
-            // 期間内データのみを抽出し、並び替え
             const filteredData = KakeiboData.filter(item => {
                 const itemDate = new Date(item.date);
                 itemDate.setHours(0,0,0,0);
@@ -816,7 +823,6 @@
                 catTotals[item.category] = (catTotals[item.category] || 0) + item.amount;
             });
 
-            // サマリーエリアの描画
             document.getElementById('total-amount').innerText = `￥${total.toLocaleString()} / ￥${monthlyBudget.toLocaleString()}`;
             
             const remaining = monthlyBudget - total;
@@ -839,7 +845,6 @@
                 budgetStatusText = `予算オーバー（戒めモード！）: -￥${Math.abs(remaining).toLocaleString()}`;
             }
 
-            // 費目別リストの表示
             const catSummaryList = document.getElementById('category-summary-list');
             catSummaryList.innerHTML = "";
             let catTextForCopy = "";
@@ -854,7 +859,6 @@
                 }
             }
 
-            // コピー用テキストの組み立て
             let historyTextForCopy = "";
             const sortedHistory = [...filteredData].reverse();
             if(sortedHistory.length > 0) {
@@ -872,7 +876,6 @@
                                        `📁 費目別の合計:\n${catTextForCopy}\n` +
                                        `📜 期間内の履歴一覧:\n${historyTextForCopy}`;
 
-            // 履歴一覧の描画（期間内のみを新しい順で）
             if (filteredData.length === 0) {
                 list.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:15px;">この期間の履歴はありません</p>`;
                 return;
@@ -902,7 +905,6 @@
             });
         }
 
-        // サマリーをクリップボードにコピーする関数
         function copySummaryToClipboard() {
             if(!currentPeriodTextForCopy) return alert("データがありません");
             navigator.clipboard.writeText(currentPeriodTextForCopy).then(() => {
@@ -916,15 +918,12 @@
             const item = KakeiboData.find(p => p.id === id);
             if (!item) return;
 
-            // 1. お店の修正
             const newShop = prompt("お店の名前を修正:", item.shop || "");
             if (newShop === null) return;
 
-            // 2. 品名・メモの修正
             const newMemo = prompt("品名・メモを修正:", item.memo);
             if (newMemo === null) return;
 
-            // 3. 費目の修正（選択肢を提示する形）
             let categoryPromptText = "費目（カテゴリー）を修正してください。\n現在の設定: [" + item.category + "]\n\n設定可能な費目一覧:\n";
             CustomCategories.forEach((cat, idx) => {
                 categoryPromptText += `${idx + 1}: ${cat}\n`;
@@ -935,24 +934,20 @@
             if (newCategoryInput === null) return;
             
             let newCategory = newCategoryInput.trim();
-            // もし数字（1, 2, 3..）が入力されたら、対応する費目名を自動でセット
             const numIdx = parseInt(newCategory) - 1;
             if(!isNaN(numIdx) && CustomCategories[numIdx]) {
                 newCategory = CustomCategories[numIdx];
             }
 
-            // 4. 金額の修正
             const newAmountStr = prompt("合計金額を修正（半角数字）:", item.amount);
             if (newAmountStr === null) return;
             const newAmount = parseInt(newAmountStr) || 0;
 
-            // データの反映
             item.shop = newShop;
             item.memo = newMemo;
             item.category = newCategory || "その他";
             item.amount = newAmount;
             
-            // もしユーザーが未登録の新しい費目を打ち込んでいたら、自動でマスターに追加しておく親切設計
             if (newCategory && !CustomCategories.includes(newCategory)) {
                 CustomCategories.push(newCategory);
                 localStorage.setItem('custom_categories', JSON.stringify(CustomCategories));
@@ -983,7 +978,7 @@
                 return;
             }
 
-            const units = ["個", "パック", "本", "束", "袋", "g", "玉", "缶"];
+            const units = ["個", "パック", "本", "袋", "g", "玉", "缶"];
 
             [...StockData].reverse().forEach(item => {
                 const badge = item.source === '直接追加' ? '🎁' : '🛒';
